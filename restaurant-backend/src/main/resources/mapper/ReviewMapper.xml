@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.restaurant.mapper.ReviewMapper">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="reviewId">
+        INSERT INTO review(rating, comment, order_id)
+        VALUES(#{rating}, #{comment}, #{orderId})
+    </insert>
+
+    <select id="findAll" resultType="Review">
+        SELECT r.*, u.username, o.total_amount
+        FROM review r
+        JOIN orders o ON r.order_id = o.order_id
+        JOIN `user` u ON o.user_id = u.user_id
+        ORDER BY r.review_id DESC
+    </select>
+</mapper>

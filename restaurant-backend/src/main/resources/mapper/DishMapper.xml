@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.restaurant.mapper.DishMapper">
+    <select id="findAll" resultType="Dish">
+        SELECT d.*, c.category_name
+        FROM dish d LEFT JOIN category c ON d.category_id = c.category_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND d.dish_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND d.category_id = #{categoryId}
+            </if>
+        </where>
+        ORDER BY d.dish_id DESC
+    </select>
+
+    <select id="findById" resultType="Dish">
+        SELECT d.*, c.category_name
+        FROM dish d LEFT JOIN category c ON d.category_id = c.category_id
+        WHERE d.dish_id = #{dishId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="dishId">
+        INSERT INTO dish(dish_name, price, stock, image, description, category_id, available)
+        VALUES(#{dishName}, #{price}, #{stock}, #{image}, #{description}, #{categoryId}, #{available})
+    </insert>
+
+    <update id="update">
+        UPDATE dish
+        <set>
+            <if test="dishName != null">dish_name = #{dishName},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="image != null">image = #{image},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="available != null">available = #{available},</if>
+        </set>
+        WHERE dish_id = #{dishId}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM dish WHERE dish_id = #{dishId}
+    </delete>
+
+    <update id="decreaseStock">
+        UPDATE dish SET stock = stock - #{quantity}
+        WHERE dish_id = #{dishId} AND stock >= #{quantity}
+    </update>
+
+    <update id="increaseStock">
+        UPDATE dish SET stock = stock + #{quantity}
+        WHERE dish_id = #{dishId}
+    </update>
+
+    <select id="lowStock" resultType="Dish">
+        SELECT d.*, c.category_name
+        FROM dish d LEFT JOIN category c ON d.category_id = c.category_id
+        WHERE d.stock &lt;= #{threshold}
+        ORDER BY d.stock ASC
+    </select>
+</mapper>

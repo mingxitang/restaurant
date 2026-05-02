@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.restaurant.mapper.RefundMapper">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="refundId">
+        INSERT INTO refund_record(refund_reason, quantity, refund_amount, stock_action, order_id, dish_id)
+        VALUES(#{refundReason}, #{quantity}, #{refundAmount}, #{stockAction}, #{orderId}, #{dishId})
+    </insert>
+
+    <select id="findAll" resultType="RefundRecord">
+        SELECT r.*, d.dish_name
+        FROM refund_record r
+        LEFT JOIN dish d ON r.dish_id = d.dish_id
+        ORDER BY r.refund_id DESC
+    </select>
+
+    <select id="refundReasons" resultType="map">
+        SELECT refund_reason AS reason, COUNT(*) AS count, IFNULL(SUM(refund_amount), 0) AS amount
+        FROM refund_record
+        GROUP BY refund_reason
+        ORDER BY count DESC
+    </select>
+</mapper>

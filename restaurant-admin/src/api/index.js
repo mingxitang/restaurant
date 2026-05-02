@@ -32,6 +32,7 @@ export const getOrder = (id) => http.get(`/orders/${id}`)
 export const createOrder = (data) => http.post('/orders', data)
 export const payOrder = (id, data) => http.put(`/orders/${id}/pay`, data)
 export const cancelOrder = (id) => http.put(`/orders/${id}/cancel`)
+export const unpayOrder = (id) => http.put(`/orders/${id}/unpay`)
 export const updateOrderStatus = (id, status) => http.put(`/orders/${id}/status`, { status })
 
 export const listRefunds = () => http.get('/refunds')

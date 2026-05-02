@@ -38,6 +38,8 @@ public interface OrderMapper {
 
     int pay(@Param("orderId") Long orderId, @Param("paidAmount") BigDecimal paidAmount, @Param("discountAmount") BigDecimal discountAmount, @Param("payMethod") String payMethod, @Param("payNo") String payNo);
 
+    int unpay(@Param("orderId") Long orderId);
+
     Map<String, Object> dashboard();
 
     List<Map<String, Object>> monthlyRevenue();

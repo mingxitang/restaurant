@@ -1,6 +1,7 @@
 <template>
   <section class="frontdesk">
     <h2>运营首页</h2>
+    <p v-if="message && !activeTable" class="order-message">{{ message }}</p>
     <div class="stats">
       <article v-if="isAdmin" class="clickable-stat" @click="showTodayOrders = true">
         <span>今日订单</span>
@@ -24,7 +25,16 @@
         <span><i class="dot occupied"></i>占用</span>
         <span><i class="dot reserved"></i>预订</span>
         <span><i class="dot cleaning"></i>待清扫</span>
+        <button class="ghost" @click="showAddTable = !showAddTable">{{ showAddTable ? '取消添加' : '+ 添加桌台' }}</button>
       </div>
+    </div>
+
+    <div v-if="showAddTable" class="editor" style="margin-bottom:14px">
+      <input v-model.trim="newTableForm.tableNumber" placeholder="桌号（编号）" />
+      <input v-model.trim="newTableForm.tableName" placeholder="桌台名称（可选）" />
+      <input v-model.trim="newTableForm.area" placeholder="区域" />
+      <input v-model.number="newTableForm.capacity" type="number" min="1" max="20" placeholder="人数" />
+      <button @click="addTable">确认添加</button>
     </div>
 
     <div class="floor-grid">
@@ -35,13 +45,23 @@
         :class="table.status.toLowerCase()"
         @click.stop="selectTable(table)"
       >
-        <template v-if="pendingOpenTableId === table.tableId && !isChef">
+        <template v-if="editingTableId === table.tableId">
+          <input v-model.trim="editTableForm.tableName" :placeholder="table.tableNumber" @click.stop />
+          <input v-model.trim="editTableForm.area" placeholder="区域" @click.stop />
+          <input v-model.number="editTableForm.capacity" type="number" min="1" max="20" @click.stop />
+          <div class="edit-actions">
+            <button class="ghost" @click.stop="saveEditTable(table)">保存</button>
+            <button class="ghost" @click.stop="cancelEditTable">取消</button>
+          </div>
+        </template>
+        <template v-else-if="pendingOpenTableId === table.tableId && !isChef">
           <button class="open-inline open-only" @click.stop="openTableFromCard(table)">开台</button>
         </template>
         <template v-else>
-          <strong>{{ table.tableNumber }}</strong>
+          <strong>{{ table.tableName || table.tableNumber }}</strong>
           <span>{{ table.area || '大厅' }} · {{ table.capacity }}人</span>
           <em>{{ statusText(table.status) }}</em>
+          <button class="ghost table-edit-btn" @click.stop="startEditTable(table)">改名</button>
         </template>
       </div>
     </div>
@@ -188,7 +208,7 @@
           <button class="ghost" @click="resetOrderFilters">重置</button>
         </div>
         <table>
-          <thead><tr><th>ID</th><th>桌号</th><th>用户</th><th>金额</th><th>状态</th><th>支付</th><th>时间</th></tr></thead>
+          <thead><tr><th>ID</th><th>桌号</th><th>用户</th><th>金额</th><th>状态</th><th>支付</th><th>时间</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="order in filteredTodayOrders" :key="order.orderId">
               <td>{{ order.orderId }}</td>
@@ -198,9 +218,12 @@
               <td><span class="badge">{{ order.status }}</span></td>
               <td>{{ isPaid(order) ? '已支付' : '未支付' }}</td>
               <td>{{ order.orderTime }}</td>
+              <td>
+                <button v-if="isPaid(order)" class="ghost" @click="unpay(order.orderId)">反结账</button>
+              </td>
             </tr>
             <tr v-if="filteredTodayOrders.length === 0">
-              <td colspan="7">暂无符合条件的订单</td>
+              <td colspan="8">暂无符合条件的订单</td>
             </tr>
           </tbody>
         </table>
@@ -236,6 +259,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createOrder,
   createRefund,
+  createTable,
   dashboard,
   getOrder,
   listCategories,
@@ -244,7 +268,9 @@ import {
   listTables,
   monthlyRevenue,
   payOrder,
+  unpayOrder,
   updateOrderStatus,
+  updateTable,
   updateTableStatus
 } from '../api'
 
@@ -280,6 +306,19 @@ const currentYear = new Date().getFullYear()
 const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
 const activeOrders = ref([])
 const refundDrafts = reactive({})
+const showAddTable = ref(false)
+const editingTableId = ref(null)
+const newTableForm = reactive({
+  tableNumber: '',
+  tableName: '',
+  area: '',
+  capacity: 4
+})
+const editTableForm = reactive({
+  tableName: '',
+  area: '',
+  capacity: 0
+})
 
 const filteredDishes = computed(() => {
   const keyword = dishKeyword.value.toLowerCase()
@@ -584,6 +623,61 @@ async function checkout() {
   activeTable.value.status = 'FREE'
   activeOrders.value = []
   await refreshAfterTableMutation()
+}
+
+async function addTable() {
+  if (!newTableForm.tableNumber) {
+    message.value = '请输入桌号（编号）。'
+    return
+  }
+  try {
+    await createTable({ ...newTableForm })
+    newTableForm.tableNumber = ''
+    newTableForm.tableName = ''
+    newTableForm.area = ''
+    newTableForm.capacity = 4
+    showAddTable.value = false
+    message.value = '桌台添加成功。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '添加桌台失败'
+  }
+}
+
+function startEditTable(table) {
+  editingTableId.value = table.tableId
+  editTableForm.tableName = table.tableName || ''
+  editTableForm.area = table.area || ''
+  editTableForm.capacity = table.capacity || 4
+}
+
+async function saveEditTable(table) {
+  try {
+    await updateTable(table.tableId, {
+      tableName: editTableForm.tableName || null,
+      area: editTableForm.area || null,
+      capacity: editTableForm.capacity
+    })
+    editingTableId.value = null
+    message.value = '桌台信息已更新。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '更新桌台失败'
+  }
+}
+
+function cancelEditTable() {
+  editingTableId.value = null
+}
+
+async function unpay(orderId) {
+  try {
+    await unpayOrder(orderId)
+    message.value = '反结账成功，订单已恢复为待支付状态。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '反结账失败'
+  }
 }
 
 async function closeTableWithoutCheckout() {

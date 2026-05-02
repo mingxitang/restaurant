@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class TableInfo {
     private Integer tableId;
     private String tableNumber;
+    private String tableName;
     private String area;
     private Integer capacity;
     private String status;

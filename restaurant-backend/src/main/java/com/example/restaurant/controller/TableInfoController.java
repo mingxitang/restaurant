@@ -25,13 +25,13 @@ public class TableInfoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','服务员')")
     public ApiResponse<TableInfo> create(@RequestBody TableInfo tableInfo) {
         return ApiResponse.ok(tableInfoService.create(tableInfo));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','服务员')")
     public ApiResponse<Void> update(@PathVariable Integer id, @RequestBody TableInfo tableInfo) {
         tableInfo.setTableId(id);
         tableInfoService.update(tableInfo);

@@ -119,6 +119,19 @@ public class OrderService {
         tableInfoMapper.updateStatus(order.getTableId(), "FREE");
     }
 
+    @Transactional
+    public void unpay(Long orderId) {
+        Order order = orderMapper.findById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        if (!"PAID".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus())) {
+            throw new BusinessException("只有已支付或已完成的订单可以反结账");
+        }
+        orderMapper.unpay(orderId);
+        tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED");
+    }
+
     public void updateStatus(Long orderId, String status) {
         orderMapper.updateStatus(orderId, status);
     }

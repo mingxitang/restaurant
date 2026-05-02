@@ -39,6 +39,7 @@ CREATE TABLE category (
 CREATE TABLE table_info (
     table_id INT AUTO_INCREMENT PRIMARY KEY,
     table_number VARCHAR(20) NOT NULL UNIQUE,
+    table_name VARCHAR(50),
     area VARCHAR(50),
     capacity INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'FREE',

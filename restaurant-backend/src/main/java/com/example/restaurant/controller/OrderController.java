@@ -56,6 +56,13 @@ public class OrderController {
         return ApiResponse.ok();
     }
 
+    @PutMapping("/{id}/unpay")
+    @PreAuthorize("hasAnyRole('管理员','服务员')")
+    public ApiResponse<Void> unpay(@PathVariable Long id) {
+        orderService.unpay(id);
+        return ApiResponse.ok();
+    }
+
     @PutMapping("/{id}/status")
     public ApiResponse<Void> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         orderService.updateStatus(id, body.get("status"));

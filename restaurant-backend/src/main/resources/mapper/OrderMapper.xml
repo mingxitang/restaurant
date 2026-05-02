@@ -90,6 +90,16 @@
         WHERE order_id = #{orderId}
     </update>
 
+    <update id="unpay">
+        UPDATE orders
+        SET status = 'PENDING',
+            paid_amount = 0.00,
+            discount_amount = 0.00,
+            pay_no = NULL,
+            pay_method = NULL
+        WHERE order_id = #{orderId}
+    </update>
+
     <update id="updateStatus">
         UPDATE orders SET status = #{status} WHERE order_id = #{orderId}
     </update>

@@ -413,6 +413,28 @@ td button { margin-right: 6px; }
   padding: 4px 10px;
   font-weight: 700;
 }
+.table-edit-btn {
+  width: fit-content;
+  margin-top: 2px;
+  padding: 2px 8px;
+  font-size: 11px;
+  min-width: auto;
+}
+.floor-table input {
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+.edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.edit-actions button {
+  padding: 4px 10px;
+  font-size: 13px;
+  min-width: auto;
+}
 .open-inline {
   width: fit-content;
   margin-top: 4px;

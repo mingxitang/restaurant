@@ -2,12 +2,12 @@
   <section class="frontdesk">
     <h2>运营首页</h2>
     <div class="stats">
-      <article class="clickable-stat" @click="showTodayOrders = true">
+      <article v-if="isAdmin" class="clickable-stat" @click="showTodayOrders = true">
         <span>今日订单</span>
         <strong>{{ data.todayOrders || 0 }}</strong>
         <small v-if="todayUnpaidCount > 0">未结 {{ todayUnpaidCount }}</small>
       </article>
-      <article class="clickable-stat revenue-card" @click="showMonthlyStats = true">
+      <article v-if="isAdmin" class="clickable-stat revenue-card" @click="showMonthlyStats = true">
         <span>今日营业额</span>
         <div><b>已收</b><strong>¥{{ todayPaidAmount.toFixed(2) }}</strong></div>
         <div><b>未收</b><strong>¥{{ todayUnpaidAmount.toFixed(2) }}</strong></div>
@@ -35,7 +35,7 @@
         :class="table.status.toLowerCase()"
         @click.stop="selectTable(table)"
       >
-        <template v-if="pendingOpenTableId === table.tableId">
+        <template v-if="pendingOpenTableId === table.tableId && !isChef">
           <button class="open-inline open-only" @click.stop="openTableFromCard(table)">开台</button>
         </template>
         <template v-else>
@@ -57,7 +57,7 @@
         </header>
 
         <div v-if="activeTable.status !== 'FREE'" class="modal-body">
-          <div class="order-menu">
+          <div v-if="!isChef" class="order-menu">
             <div class="dish-search">
               <input v-model.trim="dishKeyword" placeholder="搜索菜品名称、分类或描述" />
               <button class="ghost" @click="dishKeyword = ''">清空</button>
@@ -91,7 +91,7 @@
           </div>
 
           <aside class="desk-cart">
-            <div class="checkout-strip">
+            <div v-if="!isChef" class="checkout-strip">
               <div>
                 <span>桌台应收</span>
                 <strong>¥{{ activeTotal.toFixed(2) }}</strong>
@@ -102,7 +102,7 @@
               </div>
             </div>
 
-            <div class="cart-section">
+            <div v-if="!isChef" class="cart-section">
               <div class="cart-section-head">
                 <h4>本次加菜</h4>
                 <button :disabled="cart.length === 0" @click="submitOrder">{{ activeOrders.length ? '提交加菜' : '提交点餐' }}</button>
@@ -126,7 +126,7 @@
                 <h4>已点菜品</h4>
                 <div class="section-actions">
                   <button class="ghost" @click="loadActiveOrders">刷新</button>
-                  <button class="danger" :disabled="selectedRefundDetails.length === 0" @click="refundSelected">批量退菜</button>
+                  <button v-if="!isChef" class="danger" :disabled="selectedRefundDetails.length === 0" @click="refundSelected">批量退菜</button>
                 </div>
               </div>
               <div class="dish-search compact-search">
@@ -137,13 +137,13 @@
               <div v-for="detail in filteredOrderedDetails" :key="detail.dishId" class="ordered-item">
                 <div class="line-main">
                   <label class="select-line">
-                    <input :checked="detail.selected" type="checkbox" @change="updateRefundDraft(detail, 'selected', $event.target.checked)" />
+                    <input v-if="!isChef" :checked="detail.selected" type="checkbox" @change="updateRefundDraft(detail, 'selected', $event.target.checked)" />
                     <strong>{{ detail.dishName }}</strong>
                   </label>
                   <span>{{ detail.quantity }}份 · ¥{{ detail.subtotal.toFixed(2) }}</span>
                   <small v-if="detail.remark">{{ detail.remark }}</small>
                 </div>
-                <div class="line-controls">
+                <div v-if="!isChef" class="line-controls">
                   <input :value="detail.refundQuantity" type="number" min="1" :max="detail.quantity" placeholder="退菜份数" @input="updateRefundDraft(detail, 'refundQuantity', Number($event.target.value))" />
                   <input :value="detail.refundReason" placeholder="退菜原因" @input="updateRefundDraft(detail, 'refundReason', $event.target.value)" />
                   <button class="danger" @click="refundDetail(detail)">退菜</button>
@@ -167,8 +167,17 @@
           <input v-model.trim="orderFilters.keyword" placeholder="搜索订单号、桌号、用户" />
           <input v-model.number="orderFilters.minAmount" type="number" min="0" placeholder="最低金额" />
           <input v-model.number="orderFilters.maxAmount" type="number" min="0" placeholder="最高金额" />
-          <input v-model="orderFilters.startTime" type="datetime-local" />
-          <input v-model="orderFilters.endTime" type="datetime-local" />
+          <select v-model="orderFilters.year"><option :value="null">全部年份</option><option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option></select>
+          <select v-model="orderFilters.month"><option :value="null">全部月份</option><option v-for="m in 12" :key="m" :value="m">{{ m }}月</option></select>
+          <select v-model="orderFilters.day"><option :value="null">全部日期</option><option v-for="d in 31" :key="d" :value="d">{{ d }}日</option></select>
+          <select v-model="orderFilters.timePeriod">
+            <option value="">全天</option>
+            <option value="morning">早餐 06-10</option>
+            <option value="noon">午餐 10-14</option>
+            <option value="afternoon">下午茶 14-17</option>
+            <option value="evening">晚餐 17-21</option>
+            <option value="night">夜宵 21-06</option>
+          </select>
           <select v-model="orderFilters.orderState">
             <option value="">全部订单</option>
             <option value="PENDING">待支付</option>
@@ -255,14 +264,20 @@ const dishKeyword = ref('')
 const refundKeyword = ref('')
 const months = ref([])
 const user = computed(() => JSON.parse(localStorage.getItem('user') || '{}'))
+const isChef = computed(() => user.value?.roleName === '厨师')
+const isAdmin = computed(() => user.value?.roleName === '管理员')
 const orderFilters = reactive({
   keyword: '',
   minAmount: null,
   maxAmount: null,
-  startTime: '',
-  endTime: '',
+  year: null,
+  month: null,
+  day: null,
+  timePeriod: '',
   orderState: ''
 })
+const currentYear = new Date().getFullYear()
+const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
 const activeOrders = ref([])
 const refundDrafts = reactive({})
 
@@ -289,19 +304,53 @@ const todayUnpaidAmount = computed(() => {
   return todayOrders.value.reduce((sum, order) => sum + (!isPaid(order) ? Number(order.totalAmount || 0) : 0), 0)
 })
 const todayTotalAmount = computed(() => todayPaidAmount.value + todayUnpaidAmount.value)
+const hasDateFilter = computed(() => {
+  return orderFilters.year !== null || orderFilters.month !== null || orderFilters.day !== null || orderFilters.timePeriod !== ''
+})
+const periodRanges = {
+  morning: [6, 10],
+  noon: [10, 14],
+  afternoon: [14, 17],
+  evening: [17, 21],
+  night: [21, 24],
+  night2: [0, 6]
+}
 const filteredTodayOrders = computed(() => {
-  return todayOrders.value.filter((order) => {
+  const baseOrders = hasDateFilter.value ? orders.value : todayOrders.value
+  return baseOrders.filter((order) => {
     const keyword = orderFilters.keyword.toLowerCase()
     const amount = Number(order.totalAmount || 0)
-    const time = String(order.orderTime || '').replace(' ', 'T')
     const haystack = `${order.orderId || ''} ${order.tableNumber || ''} ${order.username || ''}`.toLowerCase()
     const matchesKeyword = !keyword || haystack.includes(keyword)
     const matchesMin = orderFilters.minAmount === null || orderFilters.minAmount === '' || amount >= Number(orderFilters.minAmount)
     const matchesMax = orderFilters.maxAmount === null || orderFilters.maxAmount === '' || amount <= Number(orderFilters.maxAmount)
-    const matchesStart = !orderFilters.startTime || time >= orderFilters.startTime
-    const matchesEnd = !orderFilters.endTime || time <= orderFilters.endTime
     const matchesState = !orderFilters.orderState || order.status === orderFilters.orderState
-    return matchesKeyword && matchesMin && matchesMax && matchesStart && matchesEnd && matchesState
+    if (!hasDateFilter.value) return matchesKeyword && matchesMin && matchesMax && matchesState
+    let matchesDate = true
+    const timeStr = String(order.orderTime || '')
+    const datePart = timeStr.slice(0, 10)
+    if (orderFilters.year !== null) {
+      matchesDate = matchesDate && datePart.slice(0, 4) === String(orderFilters.year)
+    }
+    if (orderFilters.month !== null) {
+      matchesDate = matchesDate && datePart.slice(5, 7) === String(orderFilters.month).padStart(2, '0')
+    }
+    if (orderFilters.day !== null) {
+      matchesDate = matchesDate && datePart.slice(8, 10) === String(orderFilters.day).padStart(2, '0')
+    }
+    let matchesPeriod = true
+    if (orderFilters.timePeriod) {
+      const timePart = timeStr.slice(11, 13)
+      const hour = parseInt(timePart, 10)
+      if (isNaN(hour)) matchesPeriod = false
+      else if (orderFilters.timePeriod === 'night') {
+        matchesPeriod = (hour >= 21 && hour <= 23) || (hour >= 0 && hour < 6)
+      } else {
+        const [from, to] = periodRanges[orderFilters.timePeriod]
+        matchesPeriod = hour >= from && hour < to
+      }
+    }
+    return matchesKeyword && matchesMin && matchesMax && matchesDate && matchesPeriod && matchesState
   })
 })
 const orderedDetails = computed(() => {
@@ -358,7 +407,7 @@ function statusText(status) {
 }
 
 async function load() {
-  const [dashboardData, tableData, orderData, dishData, categoryData, monthData] = await Promise.all([
+  const results = await Promise.allSettled([
     dashboard(),
     listTables(),
     listOrders(),
@@ -366,12 +415,12 @@ async function load() {
     listCategories(),
     monthlyRevenue()
   ])
-  data.value = dashboardData
-  tables.value = tableData
-  orders.value = orderData
-  dishes.value = dishData
-  categories.value = categoryData
-  months.value = monthData
+  data.value = results[0].status === 'fulfilled' ? results[0].value : {}
+  tables.value = results[1].status === 'fulfilled' ? results[1].value : []
+  orders.value = results[2].status === 'fulfilled' ? results[2].value : []
+  dishes.value = results[3].status === 'fulfilled' ? results[3].value : []
+  categories.value = results[4].status === 'fulfilled' ? results[4].value : []
+  months.value = results[5].status === 'fulfilled' ? results[5].value : []
 }
 
 function isPaid(order) {
@@ -383,14 +432,17 @@ function resetOrderFilters() {
     keyword: '',
     minAmount: null,
     maxAmount: null,
-    startTime: '',
-    endTime: '',
+    year: null,
+    month: null,
+    day: null,
+    timePeriod: '',
     orderState: ''
   })
 }
 
 async function selectTable(table) {
   if (table.status === 'FREE') {
+    if (isChef.value) return
     pendingOpenTableId.value = pendingOpenTableId.value === table.tableId ? null : table.tableId
     activeTable.value = null
     return
@@ -543,23 +595,23 @@ async function closeTableWithoutCheckout() {
 }
 
 async function refreshAfterTableMutation() {
-  const [dashboardData, orderData, dishData, tableData] = await Promise.all([
+  const results = await Promise.allSettled([
     dashboard(),
     listOrders(),
     listDishes(),
     listTables()
   ])
-  data.value = dashboardData
-  orders.value = orderData
-  dishes.value = dishData
-  tables.value = tableData
+  data.value = results[0].status === 'fulfilled' ? results[0].value : {}
+  orders.value = results[1].status === 'fulfilled' ? results[1].value : []
+  dishes.value = results[2].status === 'fulfilled' ? results[2].value : []
+  tables.value = results[3].status === 'fulfilled' ? results[3].value : []
   if (activeTable.value) {
-    const latestTable = tableData.find((table) => table.tableId === activeTable.value.tableId)
+    const latestTable = (results[3].status === 'fulfilled' ? results[3].value : []).find((table) => table.tableId === activeTable.value.tableId)
     if (latestTable) {
       activeTable.value = { ...activeTable.value, ...latestTable }
     }
   }
-  await loadActiveOrdersFrom(orderData)
+  await loadActiveOrdersFrom(results[1].status === 'fulfilled' ? results[1].value : [])
 }
 
 function handleDocumentClick(event) {

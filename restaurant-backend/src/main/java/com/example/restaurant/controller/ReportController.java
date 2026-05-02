@@ -14,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
-@PreAuthorize("hasRole('管理员')")
+@PreAuthorize("hasAnyRole('管理员','服务员','厨师')")
 public class ReportController {
     private final OrderService orderService;
     private final RefundService refundService;

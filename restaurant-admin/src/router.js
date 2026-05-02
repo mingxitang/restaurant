@@ -16,11 +16,11 @@ const router = createRouter({
       component: Layout,
       children: [
         { path: '', redirect: '/dashboard' },
-        { path: 'dashboard', component: DashboardView },
-        { path: 'users', component: UsersView },
-        { path: 'dishes', component: DishesView },
-        { path: 'categories', component: CategoriesView },
-        { path: 'reports', component: ReportsView }
+        { path: 'dashboard', component: DashboardView, meta: { roles: ['管理员', '服务员', '厨师'] } },
+        { path: 'users', component: UsersView, meta: { roles: ['管理员'] } },
+        { path: 'dishes', component: DishesView, meta: { roles: ['管理员', '厨师'] } },
+        { path: 'categories', component: CategoriesView, meta: { roles: ['管理员', '厨师'] } },
+        { path: 'reports', component: ReportsView, meta: { roles: ['管理员', '服务员', '厨师'] } }
       ]
     }
   ]
@@ -29,6 +29,11 @@ const router = createRouter({
 router.beforeEach((to) => {
   if (to.path !== '/login' && !localStorage.getItem('token')) {
     return '/login'
+  }
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  const roles = to.meta?.roles
+  if (roles && !roles.includes(user?.roleName)) {
+    return '/dashboard'
   }
 })
 

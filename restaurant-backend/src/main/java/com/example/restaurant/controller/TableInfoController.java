@@ -19,7 +19,7 @@ public class TableInfoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('管理员','服务员','顾客')")
+    @PreAuthorize("hasAnyRole('管理员','服务员','厨师','顾客')")
     public ApiResponse<List<TableInfo>> list(@RequestParam(required = false) String status) {
         return ApiResponse.ok(tableInfoService.list(status));
     }

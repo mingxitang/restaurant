@@ -22,12 +22,12 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || 'null')
 const nav = [
-  { name: '首页', path: '/dashboard' },
-  { name: '身份管理', path: '/users' },
-  { name: '菜品管理', path: '/dishes' },
-  { name: '分类管理', path: '/categories' },
-  { name: '菜品统计', path: '/reports' }
-]
+  { name: '首页', path: '/dashboard', roles: ['管理员', '服务员', '厨师'] },
+  { name: '身份管理', path: '/users', roles: ['管理员'] },
+  { name: '菜品管理', path: '/dishes', roles: ['管理员', '厨师'] },
+  { name: '分类管理', path: '/categories', roles: ['管理员', '厨师'] },
+  { name: '菜品统计', path: '/reports', roles: ['管理员', '服务员', '厨师'] }
+].filter(item => item.roles.includes(user?.roleName))
 
 function logout() {
   localStorage.clear()

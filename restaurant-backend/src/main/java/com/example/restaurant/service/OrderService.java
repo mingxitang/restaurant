@@ -48,8 +48,7 @@ public class OrderService {
             throw new BusinessException("订单明细不能为空");
         }
         Order order = orderMapper.findActiveByTableId(request.getTableId());
-        boolean newOrder = order == null;
-        if (newOrder) {
+        if (order == null) {
             order = new Order();
             order.setTableId(request.getTableId());
             order.setUserId(request.getUserId());
@@ -80,11 +79,10 @@ public class OrderService {
             }
             total = total.add(dish.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
-        if (newOrder) {
-            order.setTotalAmount(total);
-            orderMapper.updateTotal(order.getOrderId(), total);
-        } else {
+        if (order.getTotalAmount() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
             orderMapper.increaseTotal(order.getOrderId(), total);
+        } else {
+            orderMapper.updateTotal(order.getOrderId(), total);
         }
         tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED");
         return detail(order.getOrderId());

@@ -53,11 +53,11 @@ const showHot = ref(true)
 const showLowStock = ref(true)
 
 onMounted(async () => {
-  const [hotData, lowStockData] = await Promise.all([
+  const results = await Promise.allSettled([
     hotDishes(),
     lowStockDishes({ threshold: 20 })
   ])
-  dishes.value = hotData
-  lowStocks.value = lowStockData
+  dishes.value = results[0].status === 'fulfilled' ? results[0].value : []
+  lowStocks.value = results[1].status === 'fulfilled' ? results[1].value : []
 })
 </script>

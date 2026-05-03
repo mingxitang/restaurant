@@ -84,6 +84,7 @@ CREATE TABLE order_detail (
     quantity INT NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10,2) NOT NULL,
     remark VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/PREPARING/READY/SERVED',
     PRIMARY KEY (order_id, dish_id),
     CONSTRAINT fk_detail_order FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
     CONSTRAINT fk_detail_dish FOREIGN KEY (dish_id) REFERENCES dish(dish_id) ON DELETE RESTRICT
@@ -123,6 +124,19 @@ FROM orders o
 JOIN table_info t ON o.table_id = t.table_id
 JOIN order_detail od ON o.order_id = od.order_id
 JOIN dish d ON od.dish_id = d.dish_id;
+
+CREATE OR REPLACE VIEW v_kitchen_queue AS
+SELECT od.order_id, od.dish_id, d.dish_name, od.quantity, od.remark,
+       o.table_id, t.table_number, o.order_time,
+       TIMESTAMPDIFF(MINUTE, o.order_time, NOW()) AS wait_minutes,
+       od.status AS cooking_status
+FROM order_detail od
+JOIN orders o ON od.order_id = o.order_id
+JOIN dish d ON od.dish_id = d.dish_id
+JOIN table_info t ON o.table_id = t.table_id
+WHERE o.status IN ('PENDING','PAID')
+  AND (od.status IS NULL OR od.status != 'SERVED')
+ORDER BY o.order_time ASC;
 
 CREATE OR REPLACE VIEW v_monthly_revenue_trend AS
 SELECT DATE_FORMAT(order_time, '%Y-%m') AS report_month,

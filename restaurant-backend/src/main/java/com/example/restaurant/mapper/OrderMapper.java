@@ -45,4 +45,8 @@ public interface OrderMapper {
     List<Map<String, Object>> monthlyRevenue();
 
     List<Map<String, Object>> hotDishes(@Param("limit") Integer limit);
+
+    List<Map<String, Object>> kitchenQueue();
+
+    int updateDetailStatus(@Param("orderId") Long orderId, @Param("dishId") Long dishId, @Param("status") String status);
 }

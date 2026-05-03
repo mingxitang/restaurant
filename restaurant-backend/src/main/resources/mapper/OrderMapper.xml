@@ -131,6 +131,33 @@
         LIMIT 12
     </select>
 
+    <update id="updateDetailStatus">
+        UPDATE order_detail
+        SET status = #{status}
+        WHERE order_id = #{orderId}
+          AND dish_id = #{dishId}
+    </update>
+
+    <select id="kitchenQueue" resultType="map">
+        SELECT od.order_id AS orderId,
+               od.dish_id AS dishId,
+               d.dish_name AS dishName,
+               od.quantity,
+               od.remark,
+               o.table_id AS tableId,
+               t.table_number AS tableNumber,
+               o.order_time AS orderTime,
+               TIMESTAMPDIFF(MINUTE, o.order_time, NOW()) AS waitMinutes,
+               od.status AS cookingStatus
+        FROM order_detail od
+        JOIN orders o ON od.order_id = o.order_id
+        JOIN dish d ON od.dish_id = d.dish_id
+        JOIN table_info t ON o.table_id = t.table_id
+        WHERE o.status IN ('PENDING','PAID')
+          AND (od.status IS NULL OR od.status != 'SERVED')
+        ORDER BY o.order_time ASC
+    </select>
+
     <select id="hotDishes" resultType="map">
         SELECT d.dish_name AS dishName,
                c.category_name AS categoryName,

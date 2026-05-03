@@ -6,6 +6,7 @@ import UsersView from './views/UsersView.vue'
 import DishesView from './views/DishesView.vue'
 import CategoriesView from './views/CategoriesView.vue'
 import ReportsView from './views/ReportsView.vue'
+import KitchenView from './views/KitchenView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,7 +21,8 @@ const router = createRouter({
         { path: 'users', component: UsersView, meta: { roles: ['管理员'] } },
         { path: 'dishes', component: DishesView, meta: { roles: ['管理员', '厨师'] } },
         { path: 'categories', component: CategoriesView, meta: { roles: ['管理员', '厨师'] } },
-        { path: 'reports', component: ReportsView, meta: { roles: ['管理员', '服务员', '厨师'] } }
+        { path: 'reports', component: ReportsView, meta: { roles: ['管理员', '服务员', '厨师'] } },
+        { path: 'kitchen', component: KitchenView, meta: { roles: ['管理员', '厨师'] } }
       ]
     }
   ]

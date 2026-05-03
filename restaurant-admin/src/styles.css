@@ -820,3 +820,30 @@ td button { margin-right: 6px; }
   .refund-form { grid-template-columns: 1fr; }
   .floor-head { align-items: flex-start; flex-direction: column; }
 }
+
+/* ===== Kitchen View ===== */
+.kitchen { padding: 20px; }
+.kitchen h2 { margin-bottom: 16px; }
+.kitchen-stats { display: flex; gap: 12px; margin-bottom: 20px; }
+.kitchen-stats article { background: #fff; border-radius: 10px; padding: 14px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.kitchen-stats article span { font-size: 13px; color: #999; }
+.kitchen-stats article strong { display: block; font-size: 28px; margin-top: 4px; }
+.kitchen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.kitchen-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); border-left: 4px solid #4caf50; }
+.kitchen-card.warn { border-left-color: #ff9800; }
+.kitchen-card.urgent { border-left-color: #f44336; }
+.kitchen-card header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.kitchen-card header strong { font-size: 17px; }
+.kitchen-card .urgency { font-style: normal; font-weight: 700; font-size: 13px; color: #999; }
+.kitchen-card.warn .urgency { color: #ff9800; }
+.kitchen-card.urgent .urgency { color: #f44336; }
+.kitchen-card .order-refs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.kitchen-card .table-tag { background: #f0f0f0; border-radius: 6px; padding: 2px 8px; font-size: 12px; color: #666; }
+.kitchen-card .status-row { margin-bottom: 10px; }
+.kitchen-card .status-badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.kitchen-card .status-badge.pending { background: #fff3cd; color: #856404; }
+.kitchen-card .status-badge.preparing { background: #cce5ff; color: #004085; }
+.kitchen-card .status-badge.ready { background: #d4edda; color: #155724; }
+.kitchen-card .status-badge.served { background: #e2e3e5; color: #383d41; }
+.kitchen-card .actions { display: flex; gap: 8px; }
+.kitchen-card .actions button { flex: 1; font-size: 13px; padding: 8px 12px; }

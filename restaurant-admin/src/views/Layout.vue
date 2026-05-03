@@ -26,7 +26,8 @@ const nav = [
   { name: '身份管理', path: '/users', roles: ['管理员'] },
   { name: '菜品管理', path: '/dishes', roles: ['管理员', '厨师'] },
   { name: '分类管理', path: '/categories', roles: ['管理员', '厨师'] },
-  { name: '菜品统计', path: '/reports', roles: ['管理员', '服务员', '厨师'] }
+  { name: '菜品统计', path: '/reports', roles: ['管理员', '服务员', '厨师'] },
+  { name: '厨房看板', path: '/kitchen', roles: ['管理员', '厨师'] }
 ].filter(item => item.roles.includes(user?.roleName))
 
 function logout() {

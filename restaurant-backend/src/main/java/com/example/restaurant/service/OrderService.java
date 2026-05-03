@@ -99,6 +99,13 @@ public class OrderService {
         String payNo = "PAY" + DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(java.time.LocalDateTime.now()) + orderId;
         orderMapper.pay(orderId, paid, discount, request.getPayMethod(), payNo);
         orderMapper.updateStatus(orderId, "PAID");
+        // Set all order details to PREPARING so they appear in kitchen queue
+        order.setDetails(orderMapper.findDetails(orderId));
+        if (order.getDetails() != null) {
+            for (OrderDetail detail : order.getDetails()) {
+                orderMapper.updateDetailStatus(orderId, detail.getDishId(), "PREPARING");
+            }
+        }
     }
 
     @Transactional

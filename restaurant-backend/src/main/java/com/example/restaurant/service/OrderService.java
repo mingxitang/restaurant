@@ -127,7 +127,6 @@ public class OrderService {
             throw new BusinessException("只有已支付或已完成的订单可以反结账");
         }
         orderMapper.unpay(orderId);
-        tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED");
     }
 
     public void updateStatus(Long orderId, String status) {

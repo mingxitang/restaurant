@@ -413,13 +413,6 @@ td button { margin-right: 6px; }
   padding: 4px 10px;
   font-weight: 700;
 }
-.table-edit-btn {
-  width: fit-content;
-  margin-top: 2px;
-  padding: 2px 8px;
-  font-size: 11px;
-  min-width: auto;
-}
 .floor-table input {
   min-width: 0;
   padding: 4px 6px;

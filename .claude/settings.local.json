@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(mvn compile *)",
+      "Bash(mvn spring-boot:run)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"phone\":\"13800000003\",\"password\":\"123456\"}')",
+      "Bash(mysql -u root -proot restaurant_db -e \"INSERT INTO \\\\`user\\\\`\\(username, phone, points, password, role_id\\) VALUES \\('张顾客', '13800000003', 100, '\\\\$2a\\\\$10\\\\$5Xf7uAsRmirotatopF4ep.FO2iHaBwDQ26HcS7PmhIq3sheLmhwW2', 4\\);\")",
+      "Bash(curl -s http://localhost:8080/api/customer/menu -H 'Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiIxMzgwMDAwMDAwMyIsInVzZXJJZCI6NCwicm9sZSI6IumhvuWuoiIsImlhdCI6MTc3Nzc4NDkyMSwiZXhwIjoxNzc3ODcxMzIxfQ.kLuKVsn8w5gMJhyhTYz5quHVTUazFYs7EkLSCxoS7uRfJLoAPSNJQHfOhzSSY1oF')",
+      "Bash(netstat -ano)",
+      "Bash(mvn spring-boot:run -q)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d '{\"phone\":\"13800000000\",\"password\":\"123456\"}')",
+      "Bash(mvn package *)",
+      "Bash(curl -s http://localhost:8080/api/categories)",
+      "Bash(npm --prefix /d/Code/restaurant/restaurant-admin run build)",
+      "Bash(npm --prefix /d/Code/restaurant/restaurant-customer run build)",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -H \"Origin: http://localhost:5173\" -d '{\"phone\":\"13800000000\",\"password\":\"123456\"}')",
+      "Bash(mvn -f /d/Code/restaurant/restaurant-backend/pom.xml spring-boot:run -Dspring-boot.run.fork=false -Dspring-boot.run.jvmArguments=\"-Djava.net.preferIPv4Stack=true -Dserver.port=8080\")",
+      "Bash(curl -s -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -H \"Origin: http://localhost:5174\" -d '{\"phone\":\"13800000003\",\"password\":\"123456\"}')",
+      "Bash(javap -p /d/Code/restaurant/restaurant-backend/target/classes/com/example/restaurant/config/WebConfig.class)",
+      "mcp__Claude_in_Chrome__browser_batch"
+    ]
+  }
+}

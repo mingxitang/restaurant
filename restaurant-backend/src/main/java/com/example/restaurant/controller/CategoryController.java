@@ -23,13 +23,13 @@ public class CategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
     public ApiResponse<Category> create(@RequestBody Category category) {
         return ApiResponse.ok(categoryService.create(category));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
     public ApiResponse<Void> update(@PathVariable Integer id, @RequestBody Category category) {
         category.setCategoryId(id);
         categoryService.update(category);
@@ -37,7 +37,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
     public ApiResponse<Void> delete(@PathVariable Integer id) {
         categoryService.delete(id);
         return ApiResponse.ok();

@@ -7,7 +7,8 @@ INSERT INTO role(role_id, role_name) VALUES
 INSERT INTO `user`(username, phone, points, password, role_id) VALUES
 ('系统管理员', '13800000000', 0, '$2a$10$5Xf7uAsRmirotatopF4ep.FO2iHaBwDQ26HcS7PmhIq3sheLmhwW2', 1),
 ('李服务', '13800000001', 0, '$2a$10$5Xf7uAsRmirotatopF4ep.FO2iHaBwDQ26HcS7PmhIq3sheLmhwW2', 2),
-('王厨师', '13800000002', 0, '$2a$10$5Xf7uAsRmirotatopF4ep.FO2iHaBwDQ26HcS7PmhIq3sheLmhwW2', 3);
+('王厨师', '13800000002', 0, '$2a$10$5Xf7uAsRmirotatopF4ep.FO2iHaBwDQ26HcS7PmhIq3sheLmhwW2', 3),
+('张顾客', '13800000003', 100, '$2a$10$5Xf7uAsRmirotatopF4ep.FO2iHaBwDQ26HcS7PmhIq3sheLmhwW2', 4);
 
 INSERT INTO category(category_id, category_name) VALUES
 (1, '热菜'), (2, '凉菜'), (3, '饮品'), (4, '甜品');

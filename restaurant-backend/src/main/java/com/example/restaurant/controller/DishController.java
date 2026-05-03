@@ -23,19 +23,19 @@ public class DishController {
     }
 
     @GetMapping("/low-stock")
-    @PreAuthorize("hasAnyRole('管理员','服务员')")
+    @PreAuthorize("hasAnyRole('管理员','服务员','厨师')")
     public ApiResponse<List<Dish>> lowStock(@RequestParam(required = false) Integer threshold) {
         return ApiResponse.ok(dishService.lowStock(threshold));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
     public ApiResponse<Dish> create(@RequestBody Dish dish) {
         return ApiResponse.ok(dishService.create(dish));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
     public ApiResponse<Void> update(@PathVariable Long id, @RequestBody Dish dish) {
         dish.setDishId(id);
         dishService.update(dish);
@@ -43,7 +43,7 @@ public class DishController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('管理员')")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         dishService.delete(id);
         return ApiResponse.ok();

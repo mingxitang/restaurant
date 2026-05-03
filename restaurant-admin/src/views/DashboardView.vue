@@ -1,13 +1,14 @@
 <template>
   <section class="frontdesk">
-    <h2>运营首页</h2>
+    <h2>运营首页<button class="ghost" style="float:right" @click="toggleEditMode">{{ showEditMode ? '完成' : '编辑' }}</button></h2>
+    <p v-if="message && !activeTable" class="order-message">{{ message }}</p>
     <div class="stats">
-      <article class="clickable-stat" @click="showTodayOrders = true">
+      <article v-if="isAdmin" class="clickable-stat" @click="showTodayOrders = true">
         <span>今日订单</span>
         <strong>{{ data.todayOrders || 0 }}</strong>
         <small v-if="todayUnpaidCount > 0">未结 {{ todayUnpaidCount }}</small>
       </article>
-      <article class="clickable-stat revenue-card" @click="showMonthlyStats = true">
+      <article v-if="isAdmin" class="clickable-stat revenue-card" @click="showMonthlyStats = true">
         <span>今日营业额</span>
         <div><b>已收</b><strong>¥{{ todayPaidAmount.toFixed(2) }}</strong></div>
         <div><b>未收</b><strong>¥{{ todayUnpaidAmount.toFixed(2) }}</strong></div>
@@ -35,14 +36,30 @@
         :class="table.status.toLowerCase()"
         @click.stop="selectTable(table)"
       >
-        <template v-if="pendingOpenTableId === table.tableId">
+        <template v-if="showEditMode">
+          <input v-model.trim="editForm[table.tableId].tableName" :placeholder="table.tableNumber" @click.stop />
+          <input v-model.trim="editForm[table.tableId].area" placeholder="区域" @click.stop />
+          <input v-model.number="editForm[table.tableId].capacity" type="number" min="1" max="20" @click.stop />
+          <div class="edit-actions">
+            <button class="ghost" @click.stop="saveEditTable(table)">保存</button>
+            <button class="danger" @click.stop="deleteTableById(table.tableId)">删除</button>
+          </div>
+        </template>
+        <template v-else-if="pendingOpenTableId === table.tableId && !isChef">
           <button class="open-inline open-only" @click.stop="openTableFromCard(table)">开台</button>
         </template>
         <template v-else>
-          <strong>{{ table.tableNumber }}</strong>
+          <strong>{{ table.tableName || table.tableNumber }}</strong>
           <span>{{ table.area || '大厅' }} · {{ table.capacity }}人</span>
           <em>{{ statusText(table.status) }}</em>
         </template>
+      </div>
+      <div v-if="showEditMode" class="floor-table" style="border-style:dashed" @click.stop>
+        <input v-model.trim="newTableForm.tableNumber" placeholder="桌号（编号）" />
+        <input v-model.trim="newTableForm.tableName" placeholder="桌台名称（可选）" />
+        <input v-model.trim="newTableForm.area" placeholder="区域" />
+        <input v-model.number="newTableForm.capacity" type="number" min="1" max="20" placeholder="人数" />
+        <button @click="addTable">添加</button>
       </div>
     </div>
 
@@ -57,7 +74,7 @@
         </header>
 
         <div v-if="activeTable.status !== 'FREE'" class="modal-body">
-          <div class="order-menu">
+          <div v-if="!isChef" class="order-menu">
             <div class="dish-search">
               <input v-model.trim="dishKeyword" placeholder="搜索菜品名称、分类或描述" />
               <button class="ghost" @click="dishKeyword = ''">清空</button>
@@ -87,11 +104,18 @@
                 </div>
                 <em>{{ dish.stock <= 0 ? '售罄' : '单击点菜' }}</em>
               </article>
-            </div>
-          </div>
+      </div>
+      <div v-if="showEditMode" class="floor-table" style="border-style:dashed" @click.stop>
+        <input v-model.trim="newTableForm.tableNumber" placeholder="桌号（编号）" />
+        <input v-model.trim="newTableForm.tableName" placeholder="桌台名称（可选）" />
+        <input v-model.trim="newTableForm.area" placeholder="区域" />
+        <input v-model.number="newTableForm.capacity" type="number" min="1" max="20" placeholder="人数" />
+        <button @click="addTable">添加</button>
+      </div>
+    </div>
 
           <aside class="desk-cart">
-            <div class="checkout-strip">
+            <div v-if="!isChef" class="checkout-strip">
               <div>
                 <span>桌台应收</span>
                 <strong>¥{{ activeTotal.toFixed(2) }}</strong>
@@ -102,7 +126,7 @@
               </div>
             </div>
 
-            <div class="cart-section">
+            <div v-if="!isChef" class="cart-section">
               <div class="cart-section-head">
                 <h4>本次加菜</h4>
                 <button :disabled="cart.length === 0" @click="submitOrder">{{ activeOrders.length ? '提交加菜' : '提交点餐' }}</button>
@@ -126,7 +150,7 @@
                 <h4>已点菜品</h4>
                 <div class="section-actions">
                   <button class="ghost" @click="loadActiveOrders">刷新</button>
-                  <button class="danger" :disabled="selectedRefundDetails.length === 0" @click="refundSelected">批量退菜</button>
+                  <button v-if="!isChef" class="danger" :disabled="selectedRefundDetails.length === 0" @click="refundSelected">批量退菜</button>
                 </div>
               </div>
               <div class="dish-search compact-search">
@@ -137,13 +161,13 @@
               <div v-for="detail in filteredOrderedDetails" :key="detail.dishId" class="ordered-item">
                 <div class="line-main">
                   <label class="select-line">
-                    <input :checked="detail.selected" type="checkbox" @change="updateRefundDraft(detail, 'selected', $event.target.checked)" />
+                    <input v-if="!isChef" :checked="detail.selected" type="checkbox" @change="updateRefundDraft(detail, 'selected', $event.target.checked)" />
                     <strong>{{ detail.dishName }}</strong>
                   </label>
                   <span>{{ detail.quantity }}份 · ¥{{ detail.subtotal.toFixed(2) }}</span>
                   <small v-if="detail.remark">{{ detail.remark }}</small>
                 </div>
-                <div class="line-controls">
+                <div v-if="!isChef" class="line-controls">
                   <input :value="detail.refundQuantity" type="number" min="1" :max="detail.quantity" placeholder="退菜份数" @input="updateRefundDraft(detail, 'refundQuantity', Number($event.target.value))" />
                   <input :value="detail.refundReason" placeholder="退菜原因" @input="updateRefundDraft(detail, 'refundReason', $event.target.value)" />
                   <button class="danger" @click="refundDetail(detail)">退菜</button>
@@ -167,8 +191,17 @@
           <input v-model.trim="orderFilters.keyword" placeholder="搜索订单号、桌号、用户" />
           <input v-model.number="orderFilters.minAmount" type="number" min="0" placeholder="最低金额" />
           <input v-model.number="orderFilters.maxAmount" type="number" min="0" placeholder="最高金额" />
-          <input v-model="orderFilters.startTime" type="datetime-local" />
-          <input v-model="orderFilters.endTime" type="datetime-local" />
+          <select v-model="orderFilters.year"><option :value="null">全部年份</option><option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option></select>
+          <select v-model="orderFilters.month"><option :value="null">全部月份</option><option v-for="m in 12" :key="m" :value="m">{{ m }}月</option></select>
+          <select v-model="orderFilters.day"><option :value="null">全部日期</option><option v-for="d in 31" :key="d" :value="d">{{ d }}日</option></select>
+          <select v-model="orderFilters.timePeriod">
+            <option value="">全天</option>
+            <option value="morning">早餐 06-10</option>
+            <option value="noon">午餐 10-14</option>
+            <option value="afternoon">下午茶 14-17</option>
+            <option value="evening">晚餐 17-21</option>
+            <option value="night">夜宵 21-06</option>
+          </select>
           <select v-model="orderFilters.orderState">
             <option value="">全部订单</option>
             <option value="PENDING">待支付</option>
@@ -179,7 +212,7 @@
           <button class="ghost" @click="resetOrderFilters">重置</button>
         </div>
         <table>
-          <thead><tr><th>ID</th><th>桌号</th><th>用户</th><th>金额</th><th>状态</th><th>支付</th><th>时间</th></tr></thead>
+          <thead><tr><th>ID</th><th>桌号</th><th>用户</th><th>金额</th><th>状态</th><th>支付</th><th>时间</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="order in filteredTodayOrders" :key="order.orderId">
               <td>{{ order.orderId }}</td>
@@ -189,9 +222,12 @@
               <td><span class="badge">{{ order.status }}</span></td>
               <td>{{ isPaid(order) ? '已支付' : '未支付' }}</td>
               <td>{{ order.orderTime }}</td>
+              <td>
+                <button v-if="isPaid(order)" class="ghost" @click="unpay(order.orderId)">反结账</button>
+              </td>
             </tr>
             <tr v-if="filteredTodayOrders.length === 0">
-              <td colspan="7">暂无符合条件的订单</td>
+              <td colspan="8">暂无符合条件的订单</td>
             </tr>
           </tbody>
         </table>
@@ -227,6 +263,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createOrder,
   createRefund,
+  createTable,
+  deleteTable,
   dashboard,
   getOrder,
   listCategories,
@@ -235,7 +273,9 @@ import {
   listTables,
   monthlyRevenue,
   payOrder,
+  unpayOrder,
   updateOrderStatus,
+  updateTable,
   updateTableStatus
 } from '../api'
 
@@ -255,16 +295,30 @@ const dishKeyword = ref('')
 const refundKeyword = ref('')
 const months = ref([])
 const user = computed(() => JSON.parse(localStorage.getItem('user') || '{}'))
+const isChef = computed(() => user.value?.roleName === '厨师')
+const isAdmin = computed(() => user.value?.roleName === '管理员')
 const orderFilters = reactive({
   keyword: '',
   minAmount: null,
   maxAmount: null,
-  startTime: '',
-  endTime: '',
+  year: null,
+  month: null,
+  day: null,
+  timePeriod: '',
   orderState: ''
 })
+const currentYear = new Date().getFullYear()
+const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
 const activeOrders = ref([])
 const refundDrafts = reactive({})
+const showEditMode = ref(false)
+const editForm = reactive({})
+const newTableForm = reactive({
+  tableNumber: '',
+  tableName: '',
+  area: '',
+  capacity: 4
+})
 
 const filteredDishes = computed(() => {
   const keyword = dishKeyword.value.toLowerCase()
@@ -289,19 +343,53 @@ const todayUnpaidAmount = computed(() => {
   return todayOrders.value.reduce((sum, order) => sum + (!isPaid(order) ? Number(order.totalAmount || 0) : 0), 0)
 })
 const todayTotalAmount = computed(() => todayPaidAmount.value + todayUnpaidAmount.value)
+const hasDateFilter = computed(() => {
+  return orderFilters.year !== null || orderFilters.month !== null || orderFilters.day !== null || orderFilters.timePeriod !== ''
+})
+const periodRanges = {
+  morning: [6, 10],
+  noon: [10, 14],
+  afternoon: [14, 17],
+  evening: [17, 21],
+  night: [21, 24],
+  night2: [0, 6]
+}
 const filteredTodayOrders = computed(() => {
-  return todayOrders.value.filter((order) => {
+  const baseOrders = hasDateFilter.value ? orders.value : todayOrders.value
+  return baseOrders.filter((order) => {
     const keyword = orderFilters.keyword.toLowerCase()
     const amount = Number(order.totalAmount || 0)
-    const time = String(order.orderTime || '').replace(' ', 'T')
     const haystack = `${order.orderId || ''} ${order.tableNumber || ''} ${order.username || ''}`.toLowerCase()
     const matchesKeyword = !keyword || haystack.includes(keyword)
     const matchesMin = orderFilters.minAmount === null || orderFilters.minAmount === '' || amount >= Number(orderFilters.minAmount)
     const matchesMax = orderFilters.maxAmount === null || orderFilters.maxAmount === '' || amount <= Number(orderFilters.maxAmount)
-    const matchesStart = !orderFilters.startTime || time >= orderFilters.startTime
-    const matchesEnd = !orderFilters.endTime || time <= orderFilters.endTime
     const matchesState = !orderFilters.orderState || order.status === orderFilters.orderState
-    return matchesKeyword && matchesMin && matchesMax && matchesStart && matchesEnd && matchesState
+    if (!hasDateFilter.value) return matchesKeyword && matchesMin && matchesMax && matchesState
+    let matchesDate = true
+    const timeStr = String(order.orderTime || '')
+    const datePart = timeStr.slice(0, 10)
+    if (orderFilters.year !== null) {
+      matchesDate = matchesDate && datePart.slice(0, 4) === String(orderFilters.year)
+    }
+    if (orderFilters.month !== null) {
+      matchesDate = matchesDate && datePart.slice(5, 7) === String(orderFilters.month).padStart(2, '0')
+    }
+    if (orderFilters.day !== null) {
+      matchesDate = matchesDate && datePart.slice(8, 10) === String(orderFilters.day).padStart(2, '0')
+    }
+    let matchesPeriod = true
+    if (orderFilters.timePeriod) {
+      const timePart = timeStr.slice(11, 13)
+      const hour = parseInt(timePart, 10)
+      if (isNaN(hour)) matchesPeriod = false
+      else if (orderFilters.timePeriod === 'night') {
+        matchesPeriod = (hour >= 21 && hour <= 23) || (hour >= 0 && hour < 6)
+      } else {
+        const [from, to] = periodRanges[orderFilters.timePeriod]
+        matchesPeriod = hour >= from && hour < to
+      }
+    }
+    return matchesKeyword && matchesMin && matchesMax && matchesDate && matchesPeriod && matchesState
   })
 })
 const orderedDetails = computed(() => {
@@ -358,7 +446,7 @@ function statusText(status) {
 }
 
 async function load() {
-  const [dashboardData, tableData, orderData, dishData, categoryData, monthData] = await Promise.all([
+  const results = await Promise.allSettled([
     dashboard(),
     listTables(),
     listOrders(),
@@ -366,12 +454,12 @@ async function load() {
     listCategories(),
     monthlyRevenue()
   ])
-  data.value = dashboardData
-  tables.value = tableData
-  orders.value = orderData
-  dishes.value = dishData
-  categories.value = categoryData
-  months.value = monthData
+  data.value = results[0].status === 'fulfilled' ? results[0].value : {}
+  tables.value = results[1].status === 'fulfilled' ? results[1].value : []
+  orders.value = results[2].status === 'fulfilled' ? results[2].value : []
+  dishes.value = results[3].status === 'fulfilled' ? results[3].value : []
+  categories.value = results[4].status === 'fulfilled' ? results[4].value : []
+  months.value = results[5].status === 'fulfilled' ? results[5].value : []
 }
 
 function isPaid(order) {
@@ -383,14 +471,17 @@ function resetOrderFilters() {
     keyword: '',
     minAmount: null,
     maxAmount: null,
-    startTime: '',
-    endTime: '',
+    year: null,
+    month: null,
+    day: null,
+    timePeriod: '',
     orderState: ''
   })
 }
 
 async function selectTable(table) {
   if (table.status === 'FREE') {
+    if (isChef.value) return
     pendingOpenTableId.value = pendingOpenTableId.value === table.tableId ? null : table.tableId
     activeTable.value = null
     return
@@ -534,6 +625,77 @@ async function checkout() {
   await refreshAfterTableMutation()
 }
 
+function toggleEditMode() {
+  showEditMode.value = !showEditMode.value
+  if (showEditMode.value) {
+    tables.value.forEach(table => {
+      editForm[table.tableId] = {
+        tableName: table.tableName || '',
+        area: table.area || '',
+        capacity: table.capacity || 4
+      }
+    })
+  } else {
+    Object.keys(editForm).forEach(key => delete editForm[key])
+  }
+}
+
+async function addTable() {
+  if (!newTableForm.tableNumber) {
+    message.value = '请输入桌号（编号）。'
+    return
+  }
+  try {
+    await createTable({ ...newTableForm })
+    newTableForm.tableNumber = ''
+    newTableForm.tableName = ''
+    newTableForm.area = ''
+    newTableForm.capacity = 4
+    message.value = '桌台添加成功。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '添加桌台失败'
+  }
+}
+
+async function saveEditTable(table) {
+  const form = editForm[table.tableId]
+  if (!form) return
+  try {
+    await updateTable(table.tableId, {
+      tableName: form.tableName || null,
+      area: form.area || null,
+      capacity: form.capacity
+    })
+    message.value = '桌台信息已更新。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '更新桌台失败'
+  }
+}
+
+async function deleteTableById(tableId) {
+  if (!confirm('确定要删除该桌台吗？')) return
+  try {
+    await deleteTable(tableId)
+    delete editForm[tableId]
+    message.value = '桌台已删除。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '删除桌台失败'
+  }
+}
+
+async function unpay(orderId) {
+  try {
+    await unpayOrder(orderId)
+    message.value = '反结账成功，订单已恢复为待支付状态。'
+    await refreshAfterTableMutation()
+  } catch (error) {
+    message.value = error.message || '反结账失败'
+  }
+}
+
 async function closeTableWithoutCheckout() {
   await updateTableStatus(activeTable.value.tableId, 'FREE')
   message.value = activeOrders.value.length > 0 ? '已关台，未结账订单仍保留。' : '已关台。'
@@ -543,23 +705,23 @@ async function closeTableWithoutCheckout() {
 }
 
 async function refreshAfterTableMutation() {
-  const [dashboardData, orderData, dishData, tableData] = await Promise.all([
+  const results = await Promise.allSettled([
     dashboard(),
     listOrders(),
     listDishes(),
     listTables()
   ])
-  data.value = dashboardData
-  orders.value = orderData
-  dishes.value = dishData
-  tables.value = tableData
+  data.value = results[0].status === 'fulfilled' ? results[0].value : {}
+  orders.value = results[1].status === 'fulfilled' ? results[1].value : []
+  dishes.value = results[2].status === 'fulfilled' ? results[2].value : []
+  tables.value = results[3].status === 'fulfilled' ? results[3].value : []
   if (activeTable.value) {
-    const latestTable = tableData.find((table) => table.tableId === activeTable.value.tableId)
+    const latestTable = (results[3].status === 'fulfilled' ? results[3].value : []).find((table) => table.tableId === activeTable.value.tableId)
     if (latestTable) {
       activeTable.value = { ...activeTable.value, ...latestTable }
     }
   }
-  await loadActiveOrdersFrom(orderData)
+  await loadActiveOrdersFrom(results[1].status === 'fulfilled' ? results[1].value : [])
 }
 
 function handleDocumentClick(event) {

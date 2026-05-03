@@ -16,14 +16,15 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="tableId">
-        INSERT INTO table_info(table_number, area, capacity, status)
-        VALUES(#{tableNumber}, #{area}, #{capacity}, #{status})
+        INSERT INTO table_info(table_number, table_name, area, capacity, status)
+        VALUES(#{tableNumber}, #{tableName}, #{area}, #{capacity}, #{status})
     </insert>
 
     <update id="update">
         UPDATE table_info
         <set>
             <if test="tableNumber != null">table_number = #{tableNumber},</if>
+            <if test="tableName != null">table_name = #{tableName},</if>
             <if test="area != null">area = #{area},</if>
             <if test="capacity != null">capacity = #{capacity},</if>
             <if test="status != null">status = #{status},</if>

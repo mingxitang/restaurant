@@ -48,8 +48,7 @@ public class OrderService {
             throw new BusinessException("订单明细不能为空");
         }
         Order order = orderMapper.findActiveByTableId(request.getTableId());
-        boolean newOrder = order == null;
-        if (newOrder) {
+        if (order == null) {
             order = new Order();
             order.setTableId(request.getTableId());
             order.setUserId(request.getUserId());
@@ -80,11 +79,10 @@ public class OrderService {
             }
             total = total.add(dish.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
-        if (newOrder) {
-            order.setTotalAmount(total);
-            orderMapper.updateTotal(order.getOrderId(), total);
-        } else {
+        if (order.getTotalAmount() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
             orderMapper.increaseTotal(order.getOrderId(), total);
+        } else {
+            orderMapper.updateTotal(order.getOrderId(), total);
         }
         tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED");
         return detail(order.getOrderId());
@@ -101,6 +99,13 @@ public class OrderService {
         String payNo = "PAY" + DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(java.time.LocalDateTime.now()) + orderId;
         orderMapper.pay(orderId, paid, discount, request.getPayMethod(), payNo);
         orderMapper.updateStatus(orderId, "PAID");
+        // Set all order details to PREPARING so they appear in kitchen queue
+        order.setDetails(orderMapper.findDetails(orderId));
+        if (order.getDetails() != null) {
+            for (OrderDetail detail : order.getDetails()) {
+                orderMapper.updateDetailStatus(orderId, detail.getDishId(), "PREPARING");
+            }
+        }
     }
 
     @Transactional
@@ -117,6 +122,18 @@ public class OrderService {
         }
         orderMapper.updateStatus(orderId, "CANCELLED");
         tableInfoMapper.updateStatus(order.getTableId(), "FREE");
+    }
+
+    @Transactional
+    public void unpay(Long orderId) {
+        Order order = orderMapper.findById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        if (!"PAID".equals(order.getStatus()) && !"COMPLETED".equals(order.getStatus())) {
+            throw new BusinessException("只有已支付或已完成的订单可以反结账");
+        }
+        orderMapper.unpay(orderId);
     }
 
     public void updateStatus(Long orderId, String status) {

@@ -68,4 +68,11 @@ public class OrderController {
         orderService.updateStatus(id, body.get("status"));
         return ApiResponse.ok();
     }
+
+    @PutMapping("/transfer-table")
+    @PreAuthorize("hasAnyRole('管理员','服务员')")
+    public ApiResponse<Void> transferTable(@RequestBody Map<String, Integer> body) {
+        orderService.transferTable(body.get("sourceTableId"), body.get("targetTableId"));
+        return ApiResponse.ok();
+    }
 }

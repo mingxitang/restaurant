@@ -41,8 +41,10 @@ input:focus, select:focus { outline: none; border-color: #e74c3c; }
 .category-tabs button.active { background: #e74c3c; color: #fff; border-color: #e74c3c; }
 .search-bar { padding: 8px 16px; background: #fff; }
 .dish-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.dish-card { background: #fff; border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.dish-card { background: #fff; border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 .dish-card.disabled { opacity: 0.4; }
+.dish-thumb { width: 58px; height: 58px; flex: 0 0 58px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: #fff0e8; color: #e74c3c; font-size: 24px; font-weight: 800; }
+.dish-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .dish-card .info { flex: 1; }
 .dish-card .info h4 { font-size: 16px; margin-bottom: 2px; }
 .dish-card .info p { font-size: 12px; color: #999; margin-bottom: 4px; }
@@ -52,18 +54,44 @@ input:focus, select:focus { outline: none; border-color: #e74c3c; }
 
 /* Cart bar */
 .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #333; color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+.cart-click-zone { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.cart-click-zone div:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cart-click-zone strong { font-size: 16px; }
+.cart-click-zone span { font-size: 12px; color: #ddd; }
 .cart-bar .cart-icon { position: relative; }
 .cart-bar .badge { position: absolute; top: -8px; right: -8px; background: #e74c3c; color: #fff; font-size: 11px; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 .cart-bar .total { font-weight: 600; }
 .cart-bar button { background: #e74c3c; color: #fff; }
+.cart-bar button:disabled { opacity: 0.7; }
+.cart-drawer { position: fixed; left: 12px; right: 12px; bottom: 70px; z-index: 12; max-height: 48vh; overflow: auto; background: #fff; border-radius: 12px; box-shadow: 0 -2px 18px rgba(0,0,0,0.14); padding: 12px; }
+.cart-drawer header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cart-drawer header button { padding: 6px 10px; font-size: 12px; }
+.cart-drawer-actions { display: flex; gap: 8px; }
+.cart-drawer-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #eee; }
+.cart-drawer-item:first-of-type { border-top: 0; }
+.cart-drawer-item div:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cart-drawer-item div:first-child span { color: #999; font-size: 12px; }
+.cart-drawer-item input { margin-top: 4px; font-size: 13px; padding: 8px 10px; }
+.mini-qty { display: flex; align-items: center; gap: 8px; }
+.mini-qty button { width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.mini-qty span { min-width: 22px; text-align: center; font-weight: 600; }
+.settle-bar { background: #fff; color: #333; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
+.settle-bar div { display: flex; flex-direction: column; gap: 2px; }
+.settle-bar span { font-size: 12px; color: #777; }
+.settle-bar button { background: #e74c3c; color: #fff; }
+.floating-error { position: fixed; left: 16px; right: 16px; bottom: 76px; z-index: 11; background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
 
 /* Cart view */
 .cart-page { padding: 16px; padding-bottom: 100px; max-width: 500px; margin: 0 auto; }
 .cart-page h3 { margin-bottom: 12px; }
+.cart-page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cart-page-head h3 { margin-bottom: 0; }
+.empty-cart { background: #fff; border-radius: 12px; padding: 32px 16px; text-align: center; color: #777; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 .cart-item { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 .cart-item .info { flex: 1; }
 .cart-item .info h4 { font-size: 15px; }
 .cart-item .info p { font-size: 12px; color: #999; }
+.cart-item .info input { margin-top: 8px; font-size: 13px; padding: 8px 10px; }
 .cart-item .qty { display: flex; align-items: center; gap: 8px; }
 .cart-item .qty button { width: 28px; height: 28px; border-radius: 50%; font-size: 16px; padding: 0; display: flex; align-items: center; justify-content: center; }
 .cart-item .qty span { min-width: 24px; text-align: center; font-weight: 600; }
@@ -73,6 +101,7 @@ input:focus, select:focus { outline: none; border-color: #e74c3c; }
 .cart-actions { position: fixed; bottom: 16px; left: 16px; right: 16px; display: flex; gap: 12px; max-width: 468px; margin: 0 auto; }
 .cart-actions button { flex: 1; padding: 14px; font-size: 16px; }
 .cart-actions button.primary { flex: 2; }
+.empty-cart-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
 
 /* Order view */
 .order-page { padding: 16px; max-width: 500px; margin: 0 auto; }
@@ -82,10 +111,38 @@ input:focus, select:focus { outline: none; border-color: #e74c3c; }
 .order-status.paid { background: #d4edda; color: #155724; }
 .order-status.completed { background: #cce5ff; color: #004085; }
 .order-item { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.reminder-box { background: #fff; border-radius: 12px; padding: 12px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.reminder-box div { display: flex; flex-direction: column; gap: 3px; }
+.reminder-box span { color: #999; font-size: 12px; }
+.reminder-box button { white-space: nowrap; }
+.order-tip { margin: 10px 0 0; color: #e67e22; font-size: 13px; text-align: center; }
+.cooking-status { display: inline-block; width: fit-content; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.cooking-status.pending { background: #fff3cd; color: #856404; }
+.cooking-status.preparing { background: #fde2d8; color: #a33b21; }
+.cooking-status.ready { background: #e8f5e9; color: #1b7f3a; }
+.cooking-status.served { background: #e3f2fd; color: #0d5d9b; }
+.order-actions .order-add-btn { flex: 1; background: #333; color: #fff; }
+.order-actions .order-pay-btn { flex: 2; background: #e74c3c; color: #fff; }
 
 /* Pay page */
 .pay-page { padding: 16px; max-width: 500px; margin: 0 auto; }
 .pay-page h3 { margin-bottom: 16px; }
+.pay-details { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.pay-details h3 { font-size: 16px; margin-bottom: 10px; }
+.pay-detail-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #eee; }
+.pay-detail-item:first-of-type { border-top: 0; }
+.pay-detail-item div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pay-detail-item span, .pay-detail-item small { color: #999; font-size: 12px; }
+.pay-detail-item > strong { white-space: nowrap; }
+.pay-empty { color: #999; text-align: center; padding: 12px 0; font-size: 13px; }
+.pay-result { background: #fff; border-radius: 12px; padding: 28px 20px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.result-mark { width: 58px; height: 58px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; background: #e8f5e9; color: #1b7f3a; font-size: 32px; font-weight: 800; }
+.pay-result h3 { margin-bottom: 8px; }
+.pay-result p { color: #777; font-size: 13px; margin-bottom: 16px; }
+.result-summary { display: grid; gap: 8px; background: #f7f7f7; border-radius: 10px; padding: 12px; margin-bottom: 18px; }
+.result-summary div { display: flex; justify-content: space-between; align-items: center; }
+.result-summary span { color: #777; }
+.pay-result button { width: 100%; padding: 14px; margin-top: 8px; }
 .pay-methods { display: flex; gap: 10px; margin-bottom: 20px; }
 .pay-methods button { flex: 1; padding: 14px; background: #fff; border: 2px solid #ddd; border-radius: 10px; font-size: 14px; }
 .pay-methods button.active { border-color: #e74c3c; color: #e74c3c; }

@@ -26,5 +26,8 @@ public class KitchenService {
             throw new BusinessException("无效的菜品状态: " + status);
         }
         orderMapper.updateDetailStatus(orderId, dishId, status);
+        if ("SERVED".equals(status)) {
+            orderMapper.completePaidOrderIfFullyServed(orderId);
+        }
     }
 }

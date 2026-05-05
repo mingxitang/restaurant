@@ -30,11 +30,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { listTables } from '../api'
 import { store } from '../store'
 
 const router = useRouter()
+const route = useRoute()
 const tables = ref([])
 const manualNumber = ref('')
 const error = ref('')
@@ -42,22 +43,40 @@ const error = ref('')
 onMounted(async () => {
   try {
     tables.value = await listTables()
+    autoSelectFromQuery()
   } catch (e) {
     error.value = '加载桌台失败'
   }
 })
 
 function selectTable(table) {
-  store.tableId = table.tableId
-  store.tableNumber = table.tableName || table.tableNumber
+  store.setTable(table)
   router.push('/menu')
+}
+
+function autoSelectFromQuery() {
+  const tableValue = route.query.table || route.query.tableNumber || route.query.tableId
+  if (!tableValue) return
+  manualNumber.value = String(tableValue)
+  const found = findTable(manualNumber.value)
+  if (found) {
+    selectTable(found)
+  } else {
+    error.value = '扫码桌号未找到，请手动选择桌台'
+  }
+}
+
+function findTable(value) {
+  return tables.value.find(t =>
+    String(t.tableId) === value ||
+    t.tableNumber === value ||
+    t.tableName === value
+  )
 }
 
 function manualSelect() {
   if (!manualNumber.value) return
-  const found = tables.value.find(
-    t => t.tableNumber === manualNumber.value || t.tableName === manualNumber.value
-  )
+  const found = findTable(manualNumber.value)
   if (found) {
     selectTable(found)
   } else {
@@ -68,6 +87,7 @@ function manualSelect() {
 function logout() {
   localStorage.clear()
   store.clearCart()
+  store.clearTable()
   router.push('/login')
 }
 </script>

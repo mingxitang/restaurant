@@ -104,15 +104,8 @@
                 </div>
                 <em>{{ dish.stock <= 0 ? '售罄' : '单击点菜' }}</em>
               </article>
-      </div>
-      <div v-if="showEditMode" class="floor-table" style="border-style:dashed" @click.stop>
-        <input v-model.trim="newTableForm.tableNumber" placeholder="桌号（编号）" />
-        <input v-model.trim="newTableForm.tableName" placeholder="桌台名称（可选）" />
-        <input v-model.trim="newTableForm.area" placeholder="区域" />
-        <input v-model.number="newTableForm.capacity" type="number" min="1" max="20" placeholder="人数" />
-        <button @click="addTable">添加</button>
-      </div>
-    </div>
+            </div>
+          </div>
 
           <aside class="desk-cart">
             <div v-if="!isChef" class="checkout-strip">
@@ -124,6 +117,20 @@
                 <button class="ghost" @click="closeTableWithoutCheckout">关台</button>
                 <button :disabled="activeOrders.length === 0" @click="checkout">结账</button>
               </div>
+            </div>
+
+            <div v-if="!isChef && activeOrders.length > 0" class="cart-section transfer-section">
+              <div class="cart-section-head">
+                <h4>换桌 / 并桌</h4>
+                <button :disabled="!transferTargetId" @click="transferActiveTable">确认</button>
+              </div>
+              <select v-model.number="transferTargetId">
+                <option :value="null">选择目标桌台</option>
+                <option v-for="table in transferTargetOptions" :key="table.tableId" :value="table.tableId">
+                  {{ table.tableName || table.tableNumber }} · {{ table.area || '大厅' }} · {{ statusText(table.status) }}
+                </option>
+              </select>
+              <p class="compact-empty">目标为空闲桌时换桌，目标有未结订单时并桌合并订单。</p>
             </div>
 
             <div v-if="!isChef" class="cart-section">
@@ -273,6 +280,7 @@ import {
   listTables,
   monthlyRevenue,
   payOrder,
+  transferTable,
   unpayOrder,
   updateOrderStatus,
   updateTable,
@@ -293,6 +301,7 @@ const showTodayOrders = ref(false)
 const showMonthlyStats = ref(false)
 const dishKeyword = ref('')
 const refundKeyword = ref('')
+const transferTargetId = ref(null)
 const months = ref([])
 const user = computed(() => JSON.parse(localStorage.getItem('user') || '{}'))
 const isChef = computed(() => user.value?.roleName === '厨师')
@@ -435,6 +444,12 @@ const filteredOrderedDetails = computed(() => {
   const keyword = refundKeyword.value.toLowerCase()
   return orderedDetails.value.filter((detail) => !keyword || String(detail.dishName || '').toLowerCase().includes(keyword))
 })
+const transferTargetOptions = computed(() => {
+  if (!activeTable.value) return []
+  return tables.value.filter((table) => {
+    return table.tableId !== activeTable.value.tableId && ['FREE', 'OCCUPIED'].includes(table.status)
+  })
+})
 
 function statusText(status) {
   return {
@@ -514,6 +529,7 @@ function closeTableModal() {
   activeOrders.value = []
   cart.value = []
   refundKeyword.value = ''
+  transferTargetId.value = null
 }
 
 async function openTableFromCard(table) {
@@ -702,6 +718,20 @@ async function closeTableWithoutCheckout() {
   activeTable.value.status = 'FREE'
   await refreshAfterTableMutation()
   closeTableModal()
+}
+
+async function transferActiveTable() {
+  if (!activeTable.value || !transferTargetId.value) return
+  const target = tables.value.find((table) => table.tableId === transferTargetId.value)
+  try {
+    await transferTable(activeTable.value.tableId, transferTargetId.value)
+    message.value = target?.status === 'OCCUPIED' ? '并桌成功，订单已合并到目标桌。' : '换桌成功，订单已转移到目标桌。'
+    transferTargetId.value = null
+    await refreshAfterTableMutation()
+    closeTableModal()
+  } catch (error) {
+    message.value = error.message || '换桌/并桌失败'
+  }
 }
 
 async function refreshAfterTableMutation() {

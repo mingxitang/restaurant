@@ -36,17 +36,23 @@ public interface OrderMapper {
 
     int updateStatus(@Param("orderId") Long orderId, @Param("status") String status);
 
+    int updateTable(@Param("orderId") Long orderId, @Param("tableId") Integer tableId);
+
     int pay(@Param("orderId") Long orderId, @Param("paidAmount") BigDecimal paidAmount, @Param("discountAmount") BigDecimal discountAmount, @Param("payMethod") String payMethod, @Param("payNo") String payNo);
 
     int unpay(@Param("orderId") Long orderId);
+
+    int remind(@Param("orderId") Long orderId);
 
     Map<String, Object> dashboard();
 
     List<Map<String, Object>> monthlyRevenue();
 
-    List<Map<String, Object>> hotDishes(@Param("limit") Integer limit);
+    List<Map<String, Object>> hotDishes(@Param("limit") Integer limit, @Param("startDate") LocalDate startDate);
 
     List<Map<String, Object>> kitchenQueue();
 
     int updateDetailStatus(@Param("orderId") Long orderId, @Param("dishId") Long dishId, @Param("status") String status);
+
+    int completePaidOrderIfFullyServed(@Param("orderId") Long orderId);
 }

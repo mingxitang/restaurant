@@ -35,8 +35,9 @@ public class ReportController {
     }
 
     @GetMapping("/hot-dishes")
-    public ApiResponse<List<Map<String, Object>>> hotDishes(@RequestParam(required = false) Integer limit) {
-        return ApiResponse.ok(orderService.hotDishes(limit));
+    public ApiResponse<List<Map<String, Object>>> hotDishes(@RequestParam(required = false) Integer limit,
+                                                            @RequestParam(required = false) String period) {
+        return ApiResponse.ok(orderService.hotDishes(limit, period));
     }
 
     @GetMapping("/refund-reasons")

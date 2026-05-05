@@ -22,6 +22,10 @@
             {{ ref.tableNumber }} x{{ ref.quantity }}
           </span>
         </div>
+        <div class="reminder-alert" v-if="group.reminderCount > 0">
+          已催单 {{ group.reminderCount }} 次
+          <small v-if="group.lastReminderTime">最近 {{ group.lastReminderTime }}</small>
+        </div>
         <div class="status-row">
           <span :class="'status-badge ' + (group.cookingStatus || 'PENDING').toLowerCase()">
             {{ statusText(group.cookingStatus) }}
@@ -67,15 +71,22 @@ const groupedQueue = computed(() => {
         cookingStatus: item.cookingStatus || 'PENDING',
         waitMinutes: item.waitMinutes || 0,
         quantity: 0,
+        reminderCount: 0,
+        lastReminderTime: null,
         orders: []
       }
     }
     grouped[key].orders.push({
       orderId: item.orderId,
       tableNumber: item.tableNumber,
-      quantity: item.quantity
+      quantity: item.quantity,
+      reminderCount: item.reminderCount || 0
     })
     grouped[key].quantity += item.quantity
+    grouped[key].reminderCount += Number(item.reminderCount || 0)
+    if (item.lastReminderTime && (!grouped[key].lastReminderTime || item.lastReminderTime > grouped[key].lastReminderTime)) {
+      grouped[key].lastReminderTime = item.lastReminderTime
+    }
     grouped[key].waitMinutes = Math.max(grouped[key].waitMinutes, item.waitMinutes || 0)
   }
   const result = Object.values(grouped)

@@ -1,56 +1,156 @@
 # 餐厅点餐系统
 
-基于数据库课程设计思想实现的前后端分离餐厅点餐系统。
+这是一个基于 Spring Boot + Vue 3 的前后端分离餐厅点餐系统，覆盖顾客扫码点餐、服务员桌台管理、后厨制作看板、菜品库存管理、订单结算、评价统计和运营报表等流程。
 
-## 技术栈
+项目适合作为数据库课程设计、Java Web 课程设计或前后端分离综合实践项目。
 
-- 后端：Spring Boot、Spring MVC、MyBatis、Spring Security、JWT、MySQL、Maven
-- 前端：Vue 3、Vite、Vue Router、Axios
-
-## 目录
+## 一、项目结构
 
 ```text
-restaurant-backend   后端服务
-restaurant-admin     Web管理端
-restaurant-customer  顾客自助点餐端
+restaurant
+├─ restaurant-backend    Spring Boot 后端服务
+├─ restaurant-admin      管理端：管理员、服务员、厨师使用
+├─ restaurant-customer   顾客端：扫码点餐、查看订单、支付评价
+├─ ROADMAP.md            后续完善路线
+└─ 项目问题总结与知识点.md
 ```
 
-## 数据库初始化
+## 二、技术栈
 
-1. 创建并初始化表结构：
+后端：
+
+- Spring Boot 3
+- Spring MVC
+- Spring Security
+- JWT
+- MyBatis
+- MySQL
+- Maven
+
+前端：
+
+- Vue 3
+- Vite
+- Vue Router
+- Axios
+- 原生 CSS
+
+## 三、核心功能
+
+### 1. 顾客端
+
+- 支持通过 URL 参数带入桌号，例如 `/menu?table=3`。
+- 支持浏览菜单、分类筛选、搜索菜品。
+- 支持菜品图片展示，未上传图片时显示缺省占位。
+- 点菜页底部购物车可展开查看未下单菜品。
+- 新菜品点击“下单”后直接生成订单。
+- 已下单且没有新增菜品时显示“去支付”。
+- 订单页展示已点菜品、订单金额、厨房制作状态。
+- 支持顾客催单，催单信息会同步到厨房看板。
+- 支付页展示已点菜品详情，模拟支付成功后释放桌台。
+- 支持提交评价。
+
+### 2. 管理端
+
+- JWT 登录和角色权限控制。
+- 用户管理：新增、修改、重置密码、禁用/启用账号、修改角色。
+- 分类管理：新增、修改、删除菜品分类。
+- 菜品管理：新增、编辑、删除、批量上架/下架、库存预警、上传菜品图片。
+- 桌台管理：开台、点菜、加菜、退菜、关台、结账。
+- 支持换桌、并桌和合并订单。
+- 今日订单支持搜索、金额区间、日期、时段和状态筛选。
+- 首页展示今日订单、已收金额、未收金额、空闲桌位、低库存菜品。
+- 报表支持热销菜品、低库存菜品、评价筛选、退菜原因统计。
+
+### 3. 后厨看板
+
+- 按菜品制作状态展示厨房队列。
+- 支持状态流转：待制作、制作中、待上菜、已上菜。
+- 支持按等待时间高亮提醒。
+- 顾客催单后，厨房看板显示催单次数和最近催单时间。
+- 已支付且所有菜品已上菜后，订单可自动完成。
+
+### 4. 订单与库存
+
+- 一桌一单：同一桌未结账时，加菜会追加到当前订单。
+- 同一道菜重复加菜时，合并数量，不重复插入明细。
+- 下单扣减库存。
+- 退菜可回滚库存，并同步订单金额。
+- 支付成功后释放桌台。
+- 管理端结账后订单完成并释放桌台。
+
+## 四、数据库初始化
+
+请先启动 MySQL，并创建数据库：
+
+```sql
+CREATE DATABASE restaurant_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE restaurant_db;
+```
+
+然后按顺序执行：
 
 ```sql
 source restaurant-backend/src/main/resources/sql/schema.sql;
 source restaurant-backend/src/main/resources/sql/data.sql;
 ```
 
-2. 修改后端数据库连接：
+如果你是在旧数据库上升级，需要再根据实际情况执行迁移脚本：
 
-```yaml
+```sql
+source restaurant-backend/src/main/resources/sql/migration-add-order-detail-remark.sql;
+source restaurant-backend/src/main/resources/sql/migration-add-detail-status.sql;
+source restaurant-backend/src/main/resources/sql/migration-add-order-reminder.sql;
+source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
+```
+
+当前默认数据库配置在：
+
+```text
 restaurant-backend/src/main/resources/application.yml
 ```
 
-默认数据库为 `restaurant_db`，默认账号密码配置为 `root/root`。
+默认连接信息：
 
-## 默认账号
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/restaurant_db
+    username: root
+    password: 1234
+```
 
-| 角色   | 手机号      | 密码   |
-| ------ | ----------- | ------ |
-| 管理员 | 13800000000 | 123456 |
-| 服务员 | 13800000001 | 123456 |
-| 厨师   | 13800000002 | 123456 |
-| 顾客   | 13800000003 | 123456 |
+如果你的 MySQL 密码不是 `1234`，请把 `spring.datasource.password` 改成自己的密码。
 
-## 启动
+## 五、默认账号
 
-后端：
+| 角色 | 手机号 | 密码 | 说明 |
+| --- | --- | --- | --- |
+| 管理员 | 13800000000 | 123456 | 拥有全部管理权限 |
+| 服务员 | 13800000001 | 123456 | 开台、点菜、退菜、结账 |
+| 厨师 | 13800000002 | 123456 | 菜品管理、分类管理、厨房看板 |
+| 顾客 | 13800000003 | 123456 | 顾客端点餐、支付、评价 |
+
+## 六、启动项目
+
+### 1. 启动后端
+
+在后端项目目录运行，也就是包含 `pom.xml` 的目录：
 
 ```bash
 cd restaurant-backend
 mvn spring-boot:run
 ```
 
-管理端：
+后端默认地址：
+
+```text
+http://localhost:8080
+```
+
+### 2. 启动管理端
+
+在管理端项目目录运行，也就是包含 `package.json` 的目录：
 
 ```bash
 cd restaurant-admin
@@ -58,7 +158,15 @@ npm install
 npm run dev
 ```
 
-顾客端：
+管理端默认地址：
+
+```text
+http://localhost:5173
+```
+
+### 3. 启动顾客端
+
+在顾客端项目目录运行，也就是包含 `package.json` 的目录：
 
 ```bash
 cd restaurant-customer
@@ -66,95 +174,138 @@ npm install
 npm run dev
 ```
 
-访问：
+顾客端默认地址：
 
 ```text
-管理端  http://localhost:5173
-顾客端  http://localhost:5174
+http://localhost:5174
 ```
 
-## 已实现模块
+示例扫码点餐地址：
 
-- JWT 登录认证与角色权限控制
-- 用户、分类、菜品、桌位管理
-- 创建订单、支付订单、取消订单、订单状态流转
-- 库存扣减与取消回滚
-- 退换菜记录与回库处理
-- 评价查询
-- 首页看板、月度营收、热销菜品、退换原因统计
-- 顾客自助点餐端（`restaurant-customer`，端口 5174）
-- 后厨显示看板（厨房队列、菜品制作状态追踪）
+```text
+http://localhost:5174/menu?table=1
+```
 
-## 最近更新 (2026-05-03)
+## 七、打包验证
 
-### 顾客自助点餐端
+后端编译：
 
-- 新增 `restaurant-customer` 项目（Vue 3 + Vite），支持移动端扫码点餐
-- 顾客登录 → 选择桌台 → 浏览菜单（分类筛选/搜索）→ 购物车下单 → 查看订单 → 支付 → 评价
-- 后端新增 `CustomerController`，提供菜单、下单、查单、支付、评价等专用接口
-- `vite.config.js` dev server 端口 5174，proxy `/api` 到 8080
+```bash
+cd restaurant-backend
+mvn -q -DskipTests package
+```
 
-### 后厨显示系统 (KDS)
+管理端打包：
 
-- `order_detail` 表新增 `status` 列（PENDING/PREPARING/READY/SERVED），追踪菜品制作状态
-- 新增 `v_kitchen_queue` 视图，按下单时间排序待制作菜品队列
-- 新增 `KitchenView.vue` 厨房看板，按菜品聚合展示、按等待时间分色、支持状态流转
-- 新增 `KitchenController` / `KitchenService`，提供队列查询和状态更新接口
-- 订单支付时自动将所有明细状态设为 PREPARING，进入厨房队列
-- 导航栏新增"厨房看板"入口（管理员和厨师可见），`/kitchen` 路由
+```bash
+cd restaurant-admin
+npm run build
+```
 
-## 角色功能说明
+顾客端打包：
 
-| 角色   | 可访问页面                                   | 功能限制                                               |
-| ------ | -------------------------------------------- | ------------------------------------------------------ |
-| 管理员 | 全部页面                                     | 全部功能                                               |
-| 服务员 | 首页、菜品统计                               | 可开台、点菜、加菜、退菜、关台                         |
-| 厨师   | 首页、菜品管理、分类管理、菜品统计、厨房看板 | 只读查看桌台订单，可管理菜品/分类/库存，可操作厨房队列 |
-| 顾客   | 顾客端（菜单、购物车、订单、支付）           | 自助点餐、支付、评价                                   |
+```bash
+cd restaurant-customer
+npm run build
+```
 
-## 最近更新 (2026-05-02)
+## 八、图片上传说明
 
-### 角色权限完善
+菜品管理中上传的图片会保存到后端运行目录下：
 
-- 路由器增加基于 `meta.roles` 的页面级权限守卫，无权限角色自动重定向至首页
-- 侧边导航栏根据当前用户角色动态过滤可见菜单项
-- 后端控制器权限注解扩展，厨师角色可访问菜品 CRUD、分类 CRUD 和报表接口
-- 桌位查询接口对所有角色开放
+```text
+restaurant-backend/uploads/dishes/
+```
 
-### 首页厨师角色视图限制
+数据库中保存的图片路径类似：
 
-- 厨师登录后仅可查看桌台订单详情（已点菜品、订单状态），不可操作点菜/加菜/退菜/关台/结账
-- 厨师不可点击首页统计卡片（今日订单、今日营业额）
-- 厨师不可操作开台
+```text
+/uploads/dishes/xxxxxxxx.jpg
+```
 
-### 订单筛选增强
+后端通过 `/uploads/**` 对外提供静态资源访问。管理端和顾客端的 `vite.config.js` 已配置 `/uploads` 代理到后端，所以开发环境下上传后可以直接在页面看到图片。
 
-- 今日订单筛选条件从 `datetime-local` 改为年/月/日/时段（早餐/午餐/下午茶/晚餐/夜宵）下拉选择
-- 时段筛选支持跨天夜宵（21:00 — 次日 06:00）
+如果图片上传成功但页面不显示，请检查：
 
-### 数据加载容错
+- 后端是否已启动。
+- 管理端或顾客端是否已重启。
+- 图片路径是否以 `/uploads/dishes/` 开头。
+- 浏览器开发者工具 Network 中图片请求是否为 404。
 
-- 首页 `load()` 与 `refreshAfterTableMutation()` 从 `Promise.all` 改为 `Promise.allSettled`，单个接口失败不再阻塞其他数据加载
-- 菜品统计页同样改为 `Promise.allSettled`
+## 九、角色权限说明
 
-### 订单金额计算修复
+| 角色 | 可访问模块 | 主要限制 |
+| --- | --- | --- |
+| 管理员 | 全部页面 | 无 |
+| 服务员 | 首页、桌台订单、菜品统计 | 不能进入用户管理等管理员专属页面 |
+| 厨师 | 首页、菜品管理、分类管理、厨房看板、报表 | 首页只读桌台订单，不能开台、点菜、退菜、结账 |
+| 顾客 | 顾客端页面 | 不能访问管理端接口 |
 
-- 修复新订单首次加菜时金额累加逻辑错误：新建订单使用 `updateTotal` 设置初始金额，已有金额的订单使用 `increaseTotal` 累加
+权限控制分两层：
 
-### 后端代码规范
+- 前端：通过路由 `meta.roles` 和导航过滤控制页面入口。
+- 后端：通过 `@PreAuthorize` 控制接口权限。
 
-- 为 `JwtAuthenticationFilter` 和 `WebConfig` 的方法参数添加 `@NonNull` 注解，消除 Spring 6 null-safety 编译警告
+前端权限只是为了改善体验，真正的安全控制以后端权限为准。
 
-### 反结账桌台占用修复
+## 十、常见问题
 
-- 反结账操作移除对桌台状态 `OCCUPIED` 的强制设置，避免同台其他未结账订单（原桌台正在进行的点单）被错误吞掉
-- 桌台状态应由桌台上实际存在的有效订单决定，反结账只负责回退订单支付状态
+### 1. 后端启动失败，提示数据库连接失败
 
-### 桌台管理交互优化
+请检查：
 
-- 移除每张桌台卡片上的"改名"按钮，缩小卡片尺寸，避免卡片被撑大
-- 移除 `floor-head` 区域的 `+ 添加桌台`入口和独立的添加表单
-- 首页右上角新增"编辑"切换按钮，点击进入编辑模式后：
-  - 每张桌台卡片变为可编辑表单（名称、区域、人数），可保存修改或删除桌台
-  - 末尾出现虚线边框的添加卡片，用于新增桌台
-- 编辑模式统一了"加桌台"和"改桌台"两个操作入口，界面更简洁
+- MySQL 是否启动。
+- 是否已经创建 `restaurant_db`。
+- `application.yml` 中的用户名和密码是否正确。
+
+### 2. 页面请求接口失败
+
+请确认：
+
+- 后端是否运行在 `8080` 端口。
+- 前端是否运行在正确目录。
+- 浏览器控制台是否有 401、403、404、500 错误。
+- 登录是否过期，必要时重新登录。
+
+### 3. 催单时报 `Unknown column 'reminder_count'`
+
+说明旧数据库缺少催单字段。请执行：
+
+```sql
+source restaurant-backend/src/main/resources/sql/migration-add-order-reminder.sql;
+source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
+```
+
+执行后重启后端。
+
+### 4. 厨房看板没有显示新订单
+
+请检查：
+
+- 订单是否已经成功下单。
+- `order_detail.status` 字段是否存在。
+- `v_kitchen_queue` 视图是否已创建。
+- 旧数据库是否执行过迁移脚本。
+
+### 5. 顾客端图片不显示
+
+请确认前端已重启，因为 `/uploads` 代理配置在 `vite.config.js` 中，修改后需要重启 Vite 开发服务器。
+
+## 十一、后续优化方向
+
+后续计划记录在：
+
+```text
+ROADMAP.md
+```
+
+已完成前四阶段：稳定性与文档统一、订单业务闭环、顾客端体验增强、管理端运营能力。
+
+后续可以继续完善：
+
+- JWT 密钥改为环境变量。
+- 登录失败次数限制。
+- 核心业务单元测试。
+- 接口测试清单。
+- Docker Compose 一键启动。
+- 更细粒度的角色权限说明。

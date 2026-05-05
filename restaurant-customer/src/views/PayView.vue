@@ -5,7 +5,34 @@
       <button @click="router.push('/order')">返回</button>
     </header>
     <div class="pay-page">
-      <div v-if="!isReview">
+      <div v-if="paidSuccess" class="pay-result">
+        <div class="result-mark">✓</div>
+        <h3>支付成功</h3>
+        <p>订单号：{{ paidSnapshot.orderId }}</p>
+        <div class="result-summary">
+          <div><span>支付方式</span><strong>{{ paidSnapshot.method }}</strong></div>
+          <div><span>支付金额</span><strong>&yen;{{ paidSnapshot.amount }}</strong></div>
+        </div>
+        <button class="primary" @click="goReview">去评价</button>
+        <button class="ghost" @click="finishWithoutReview">返回首页</button>
+      </div>
+
+      <div v-else-if="!isReview">
+        <section class="pay-details">
+          <h3>已点菜品</h3>
+          <div v-if="order?.details?.length">
+            <div class="pay-detail-item" v-for="detail in order.details" :key="detail.dishId">
+              <div>
+                <strong>{{ detail.dishName }}</strong>
+                <span>&yen;{{ Number(detail.unitPrice || 0).toFixed(2) }} x {{ detail.quantity }}</span>
+                <small v-if="detail.remark">{{ detail.remark }}</small>
+              </div>
+              <strong>&yen;{{ (Number(detail.unitPrice || 0) * Number(detail.quantity || 0)).toFixed(2) }}</strong>
+            </div>
+          </div>
+          <p v-else class="pay-empty">暂无菜品明细</p>
+        </section>
+
         <div class="cart-summary">
           <div class="row"><span>订单金额</span><span>&yen;{{ order?.totalAmount?.toFixed(2) || '0.00' }}</span></div>
           <div class="row total"><span>应付</span><span>&yen;{{ order?.totalAmount?.toFixed(2) || '0.00' }}</span></div>
@@ -58,6 +85,8 @@ const submitting = ref(false)
 const error = ref('')
 const rating = ref(5)
 const comment = ref('')
+const paidSuccess = ref(false)
+const paidSnapshot = ref({ orderId: '', method: '', amount: '0.00' })
 
 const methods = [
   { label: '微信支付', value: '微信支付' },
@@ -73,12 +102,28 @@ async function doPay() {
   try {
     const orderId = order.value?.orderId || store.currentOrder?.orderId
     await payOrder(orderId, { payMethod: method.value, discountAmount: 0, pointsToUse: 0 })
-    router.push({ path: '/pay', query: { review: '1' } })
+    paidSnapshot.value = {
+      orderId,
+      method: method.value,
+      amount: Number(order.value?.totalAmount || store.currentOrder?.totalAmount || 0).toFixed(2)
+    }
+    paidSuccess.value = true
   } catch (err) {
     error.value = err.message || '支付失败'
   } finally {
     paying.value = false
   }
+}
+
+function goReview() {
+  paidSuccess.value = false
+  router.push({ path: '/pay', query: { review: '1' } })
+}
+
+function finishWithoutReview() {
+  store.currentOrder = null
+  store.clearTable()
+  router.push('/')
 }
 
 async function doReview() {

@@ -13,4 +13,5 @@ public class OrderDetail {
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
     private String remark;
+    private String status;
 }

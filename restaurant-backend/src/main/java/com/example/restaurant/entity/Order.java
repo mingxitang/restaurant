@@ -14,6 +14,8 @@ public class Order {
     private BigDecimal paidAmount;
     private BigDecimal discountAmount;
     private String status;
+    private Integer reminderCount;
+    private LocalDateTime lastReminderTime;
     private String payNo;
     private String payMethod;
     private Integer tableId;

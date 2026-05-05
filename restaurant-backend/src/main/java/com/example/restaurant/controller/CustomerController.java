@@ -52,6 +52,12 @@ public class CustomerController {
         return ApiResponse.ok();
     }
 
+    @PostMapping("/orders/{id}/remind")
+    public ApiResponse<Void> remind(@PathVariable Long id) {
+        orderService.remind(id);
+        return ApiResponse.ok();
+    }
+
     @PostMapping("/orders/{id}/review")
     public ApiResponse<Void> review(@PathVariable Long id, @RequestBody ReviewRequest request) {
         request.setOrderId(id);

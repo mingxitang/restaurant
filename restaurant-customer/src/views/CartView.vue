@@ -2,19 +2,25 @@
   <div>
     <header class="app-header">
       <h2>购物车</h2>
-      <button @click="router.push('/menu')">继续点菜</button>
+      <button @click="router.push('/menu')">返回菜单</button>
     </header>
-    <div class="cart-page">
-      <div v-if="store.cart.length === 0" style="text-align:center;padding:60px;color:#999">
-        <p>购物车为空</p>
-        <button class="primary" style="margin-top:16px" @click="router.push('/menu')">去点菜</button>
-      </div>
 
-      <div v-else>
+    <div class="cart-page">
+      <div v-if="store.cart.length">
+        <div class="cart-page-head">
+          <h3>未下单菜品</h3>
+          <button class="ghost" @click="store.clearCart()">清空</button>
+        </div>
+
         <div class="cart-item" v-for="item in store.cart" :key="item.dishId">
           <div class="info">
             <h4>{{ item.dishName }}</h4>
-            <p>&yen;{{ item.price.toFixed(2) }} / 份</p>
+            <p>&yen;{{ Number(item.price || 0).toFixed(2) }} / 份</p>
+            <input
+              :value="item.remark"
+              placeholder="备注：少辣、不要葱、打包等"
+              @input="store.updateCartRemark(item.dishId, $event.target.value)"
+            />
           </div>
           <div class="qty">
             <button @click="store.updateCartQty(item.dishId, item.quantity - 1)">-</button>
@@ -24,16 +30,24 @@
         </div>
 
         <div class="cart-summary">
-          <div class="row"><span>共 {{ store.cartCount }} 份</span></div>
           <div class="row total"><span>合计</span><span>&yen;{{ store.cartTotal.toFixed(2) }}</span></div>
         </div>
 
         <div class="cart-actions">
-          <button class="primary" @click="submitOrder" :disabled="submitting">
-            {{ submitting ? '提交中...' : '确认下单' }}
+          <button class="ghost" @click="router.push('/menu')">继续加菜</button>
+          <button class="primary" :disabled="submitting" @click="submitOrder">
+            {{ submitting ? '下单中...' : '提交订单' }}
           </button>
         </div>
-        <p v-if="error" class="error" style="text-align:center;margin-top:12px">{{ error }}</p>
+        <p v-if="error" class="error floating-error">{{ error }}</p>
+      </div>
+
+      <div v-else class="empty-cart">
+        <p>购物车是空的</p>
+        <div class="empty-cart-actions">
+          <button class="primary" @click="router.push('/menu')">去点菜</button>
+          <button class="ghost" v-if="store.currentOrder?.orderId" @click="router.push('/order')">查看订单</button>
+        </div>
       </div>
     </div>
   </div>
@@ -50,7 +64,10 @@ const submitting = ref(false)
 const error = ref('')
 
 async function submitOrder() {
-  if (!store.tableId) return router.push('/')
+  if (!store.tableId) {
+    router.push('/')
+    return
+  }
   submitting.value = true
   error.value = ''
   try {

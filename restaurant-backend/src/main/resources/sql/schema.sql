@@ -68,6 +68,8 @@ CREATE TABLE orders (
     paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    reminder_count INT NOT NULL DEFAULT 0,
+    last_reminder_time DATETIME NULL,
     pay_no VARCHAR(64),
     pay_method VARCHAR(30),
     table_id INT NOT NULL,
@@ -128,6 +130,7 @@ JOIN dish d ON od.dish_id = d.dish_id;
 CREATE OR REPLACE VIEW v_kitchen_queue AS
 SELECT od.order_id, od.dish_id, d.dish_name, od.quantity, od.remark,
        o.table_id, t.table_number, o.order_time,
+       o.reminder_count, o.last_reminder_time,
        TIMESTAMPDIFF(MINUTE, o.order_time, NOW()) AS wait_minutes,
        od.status AS cooking_status
 FROM order_detail od

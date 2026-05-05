@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -99,6 +100,7 @@ public class OrderService {
         String payNo = "PAY" + DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(java.time.LocalDateTime.now()) + orderId;
         orderMapper.pay(orderId, paid, discount, request.getPayMethod(), payNo);
         orderMapper.updateStatus(orderId, "PAID");
+        tableInfoMapper.updateStatus(order.getTableId(), "FREE");
         // Set all order details to PREPARING so they appear in kitchen queue
         order.setDetails(orderMapper.findDetails(orderId));
         if (order.getDetails() != null) {
@@ -136,6 +138,51 @@ public class OrderService {
         orderMapper.unpay(orderId);
     }
 
+    @Transactional
+    public void remind(Long orderId) {
+        Order order = orderMapper.findById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        if (!List.of("PENDING", "PAID").contains(order.getStatus())) {
+            throw new BusinessException("当前订单状态不可催单");
+        }
+        orderMapper.remind(orderId);
+    }
+
+    @Transactional
+    public void transferTable(Integer sourceTableId, Integer targetTableId) {
+        if (sourceTableId == null || targetTableId == null || sourceTableId.equals(targetTableId)) {
+            throw new BusinessException("请选择有效的目标桌台");
+        }
+        Order sourceOrder = orderMapper.findActiveByTableId(sourceTableId);
+        if (sourceOrder == null) {
+            throw new BusinessException("原桌台没有待支付订单");
+        }
+        Order targetOrder = orderMapper.findActiveByTableId(targetTableId);
+        if (targetOrder == null) {
+            orderMapper.updateTable(sourceOrder.getOrderId(), targetTableId);
+        } else {
+            List<OrderDetail> details = orderMapper.findDetails(sourceOrder.getOrderId());
+            for (OrderDetail item : details) {
+                OrderDetail moved = new OrderDetail();
+                moved.setOrderId(targetOrder.getOrderId());
+                moved.setDishId(item.getDishId());
+                moved.setQuantity(item.getQuantity());
+                moved.setUnitPrice(item.getUnitPrice());
+                moved.setRemark(item.getRemark());
+                int updated = orderMapper.addDetailQuantity(moved);
+                if (updated == 0) {
+                    orderMapper.insertDetail(moved);
+                }
+            }
+            orderMapper.increaseTotal(targetOrder.getOrderId(), sourceOrder.getTotalAmount());
+            orderMapper.updateStatus(sourceOrder.getOrderId(), "CANCELLED");
+        }
+        tableInfoMapper.updateStatus(sourceTableId, "FREE");
+        tableInfoMapper.updateStatus(targetTableId, "OCCUPIED");
+    }
+
     public void updateStatus(Long orderId, String status) {
         orderMapper.updateStatus(orderId, status);
     }
@@ -148,7 +195,21 @@ public class OrderService {
         return orderMapper.monthlyRevenue();
     }
 
-    public List<Map<String, Object>> hotDishes(Integer limit) {
-        return orderMapper.hotDishes(limit == null ? 10 : limit);
+    public List<Map<String, Object>> hotDishes(Integer limit, String period) {
+        return orderMapper.hotDishes(limit == null ? 10 : limit, reportStartDate(period));
+    }
+
+    private LocalDate reportStartDate(String period) {
+        LocalDate today = LocalDate.now();
+        if ("day".equals(period)) {
+            return today;
+        }
+        if ("week".equals(period)) {
+            return today.with(DayOfWeek.MONDAY);
+        }
+        if ("month".equals(period)) {
+            return today.withDayOfMonth(1);
+        }
+        return null;
     }
 }

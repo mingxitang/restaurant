@@ -5,8 +5,15 @@ import com.example.restaurant.entity.Dish;
 import com.example.restaurant.service.DishService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/dishes")
@@ -47,5 +54,24 @@ public class DishController {
     public ApiResponse<Void> delete(@PathVariable Long id) {
         dishService.delete(id);
         return ApiResponse.ok();
+    }
+
+    @PostMapping("/upload-image")
+    @PreAuthorize("hasAnyRole('管理员','厨师')")
+    public ApiResponse<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return ApiResponse.ok(Map.of("url", ""));
+        }
+        String originalName = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        String ext = "";
+        int dotIndex = originalName.lastIndexOf('.');
+        if (dotIndex >= 0) {
+            ext = originalName.substring(dotIndex);
+        }
+        String fileName = UUID.randomUUID() + ext;
+        Path dir = Paths.get("uploads", "dishes").toAbsolutePath().normalize();
+        Files.createDirectories(dir);
+        Files.copy(file.getInputStream(), dir.resolve(fileName));
+        return ApiResponse.ok(Map.of("url", "/uploads/dishes/" + fileName));
     }
 }

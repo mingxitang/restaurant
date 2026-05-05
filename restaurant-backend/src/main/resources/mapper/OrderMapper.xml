@@ -100,8 +100,19 @@
         WHERE order_id = #{orderId}
     </update>
 
+    <update id="remind">
+        UPDATE orders
+        SET reminder_count = reminder_count + 1,
+            last_reminder_time = NOW()
+        WHERE order_id = #{orderId}
+    </update>
+
     <update id="updateStatus">
         UPDATE orders SET status = #{status} WHERE order_id = #{orderId}
+    </update>
+
+    <update id="updateTable">
+        UPDATE orders SET table_id = #{tableId} WHERE order_id = #{orderId}
     </update>
 
     <update id="pay">
@@ -138,6 +149,19 @@
           AND dish_id = #{dishId}
     </update>
 
+    <update id="completePaidOrderIfFullyServed">
+        UPDATE orders o
+        SET o.status = 'COMPLETED'
+        WHERE o.order_id = #{orderId}
+          AND o.status = 'PAID'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM order_detail od
+              WHERE od.order_id = o.order_id
+                AND od.status != 'SERVED'
+          )
+    </update>
+
     <select id="kitchenQueue" resultType="map">
         SELECT od.order_id AS orderId,
                od.dish_id AS dishId,
@@ -147,6 +171,8 @@
                o.table_id AS tableId,
                t.table_number AS tableNumber,
                o.order_time AS orderTime,
+               o.reminder_count AS reminderCount,
+               o.last_reminder_time AS lastReminderTime,
                TIMESTAMPDIFF(MINUTE, o.order_time, NOW()) AS waitMinutes,
                od.status AS cookingStatus
         FROM order_detail od
@@ -168,6 +194,7 @@
         JOIN dish d ON od.dish_id = d.dish_id
         LEFT JOIN category c ON d.category_id = c.category_id
         WHERE o.status IN ('PAID','COMPLETED')
+          <if test="startDate != null">AND DATE(o.order_time) &gt;= #{startDate}</if>
         GROUP BY d.dish_id, d.dish_name, c.category_name
         ORDER BY sales DESC
         LIMIT #{limit}

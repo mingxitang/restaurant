@@ -1,6 +1,8 @@
 node_modules/
 dist/
 target/
+.vite/
 .idea/
 .vscode/
 *.log
+.alma-snapshots

@@ -248,7 +248,41 @@ restaurant-backend/uploads/dishes/
 
 前端权限只是为了改善体验，真正的安全控制以后端权限为准。
 
-## 十、常见问题
+## 十、Redis（可选）
+
+Redis 是一个**可选的增强组件**，默认不启用，Windows 上无需安装。
+
+### 默认行为
+
+- Windows 开发环境：使用内存级 JWT 黑名单和缓存，开箱即用。
+- 无需安装 Redis，项目正常启动和运行。
+
+### 启用 Redis（WSL / Linux）
+
+如果你在 WSL 或 Linux 环境下运行，可以启用 Redis 以获得持久化的 JWT 黑名单和分布式缓存能力。
+
+**1. 确认 Redis 已启动：**
+
+```bash
+redis-cli ping  # 应返回 PONG
+```
+
+**2. 修改 `application.yml` 三处：**
+
+```yaml
+# ① 删除 Redis 自动配置的排除项
+# ② app.redis.enabled 改为 true
+# ③ 取消 spring.data.redis 注释
+```
+
+详细步骤见：[docs/REDIS.md](docs/REDIS.md)
+
+### 启用后新增功能
+
+- **JWT 登出接口** `POST /api/auth/logout`：登录用户调用后 token 立即失效
+- **Redis 缓存**：可用 `@Cacheable` 缓存菜品、分类等查询
+
+## 十一、常见问题
 
 ### 1. 后端启动失败，提示数据库连接失败
 
@@ -291,7 +325,7 @@ source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
 
 请确认前端已重启，因为 `/uploads` 代理配置在 `vite.config.js` 中，修改后需要重启 Vite 开发服务器。
 
-## 十一、后续优化方向
+## 十二、后续优化方向
 
 后续计划记录在：
 

@@ -18,8 +18,7 @@ public class TableInfoController {
         this.tableInfoService = tableInfoService;
     }
 
-    @GetMapping
-    @PreAuthorize("hasAnyRole('管理员','服务员','厨师','顾客')")
+    @GetMapping
     public ApiResponse<List<TableInfo>> list(@RequestParam(required = false) String status) {
         return ApiResponse.ok(tableInfoService.list(status));
     }

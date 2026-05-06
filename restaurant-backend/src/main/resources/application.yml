@@ -1,28 +1,51 @@
-server:
-  port: 8080
-
-spring:
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/restaurant_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 1234
-  jackson:
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: Asia/Shanghai
-
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.example.restaurant.entity
-  configuration:
-    map-underscore-to-camel-case: true
-
-jwt:
-  secret: "restaurant-course-design-secret-key-change-me-please-2026"
-  expiration-minutes: 1440
-
-app:
-  cors:
-    allowed-origins:
-      - http://localhost:*
-      - http://127.0.0.1:*
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/restaurant_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 1234
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  # 默认排除 Redis 自动配置，保证 Windows 无 Redis 也能启动
+  # 在 WSL/Linux 启用 Redis 时：删掉下面这行，并启用 app.redis 配置块
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.restaurant.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+jwt:
+  secret: "restaurant-course-design-secret-key-change-me-please-2026"
+  expiration-minutes: 1440
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:*
+      - http://127.0.0.1:*
+  # ========== Redis 开关 ==========
+  # Windows（默认）: enabled: false，使用内存黑名单，不需要装 Redis
+  # WSL / Linux:     enabled: true，同时删除上面 autoconfigure.exclude 并启用下方 spring.data.redis
+  redis:
+    enabled: false
+
+# ========== Redis 连接配置（启用时取消注释）==========
+#spring:
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+#      timeout: 3000ms
+#      lettuce:
+#        pool:
+#          max-active: 8
+#          max-idle: 8
+#          min-idle: 2

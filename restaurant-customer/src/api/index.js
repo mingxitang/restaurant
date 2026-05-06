@@ -1,6 +1,7 @@
-import http from './http'
-
-export const login = (data) => http.post('/auth/login', data)
+import http from './http'
+
+export const login = (data) => http.post('/auth/login', data)
+export const logout = () => http.post('/auth/logout')
 
 export const getMenu = () => http.get('/customer/menu')
 export const getOrder = (id) => http.get(`/customer/orders/${id}`)

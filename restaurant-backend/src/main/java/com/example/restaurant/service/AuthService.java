@@ -32,4 +32,14 @@ public class AuthService {
         String token = jwtTokenProvider.createToken(user.getUserId(), user.getPhone(), user.getRoleName());
         return new LoginResponse(token, user.getUserId(), user.getUsername(), user.getPhone(), user.getRoleName());
     }
+
+    /** 计算 token 剩余有效秒数，用于登出时设置黑名单 TTL */
+    public long getTokenRemainingSeconds(String token) {
+        try {
+            long expMillis = jwtTokenProvider.parseClaims(token).getExpiration().getTime();
+            return Math.max(0, (expMillis - System.currentTimeMillis()) / 1000);
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
 }

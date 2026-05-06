@@ -1,6 +1,7 @@
-import http from './http'
-
-export const login = (data) => http.post('/auth/login', data)
+import http from './http'
+
+export const login = (data) => http.post('/auth/login', data)
+export const logout = () => http.post('/auth/logout')
 export const dashboard = () => http.get('/reports/dashboard')
 export const monthlyRevenue = () => http.get('/reports/monthly-revenue')
 export const hotDishes = (params) => http.get('/reports/hot-dishes', { params })

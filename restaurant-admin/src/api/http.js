@@ -21,7 +21,14 @@ http.interceptors.response.use(
     }
     return payload.data
   },
-  (error) => Promise.reject(error.response?.data?.message ? new Error(error.response.data.message) : error)
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error.response?.data?.message ? new Error(error.response.data.message) : error)
+  }
 )
 
 export default http

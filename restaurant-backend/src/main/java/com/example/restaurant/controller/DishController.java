@@ -62,11 +62,12 @@ public class DishController {
         if (file.isEmpty()) {
             return ApiResponse.ok(Map.of("url", ""));
         }
-        String originalName = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+        String originalName = file.getOriginalFilename();
+        String safeName = originalName != null ? originalName : "";
         String ext = "";
-        int dotIndex = originalName.lastIndexOf('.');
+        int dotIndex = safeName.lastIndexOf('.');
         if (dotIndex >= 0) {
-            ext = originalName.substring(dotIndex);
+            ext = safeName.substring(dotIndex);
         }
         String fileName = UUID.randomUUID() + ext;
         Path dir = Paths.get("uploads", "dishes").toAbsolutePath().normalize();

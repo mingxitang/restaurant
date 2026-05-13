@@ -25,6 +25,7 @@ import java.time.Duration;
 public class RedisConfig {
 
     @Bean
+    @SuppressWarnings("null")
     public CacheManager cacheManager(RedisConnectionFactory factory) {
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(30))            // 默认过期 30 分钟

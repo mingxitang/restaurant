@@ -22,6 +22,7 @@ public class RedisTokenBlacklist implements TokenBlacklist {
     }
 
     @Override
+    @SuppressWarnings("null")
     public void blacklist(String token, long expirationSeconds) {
         redisTemplate.opsForValue().set(PREFIX + token, "1", Duration.ofSeconds(expirationSeconds));
     }

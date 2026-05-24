@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS review;
 DROP TABLE IF EXISTS refund_record;
 DROP TABLE IF EXISTS order_detail;
 DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS waiter_call;
 DROP TABLE IF EXISTS dish;
 DROP TABLE IF EXISTS table_info;
 DROP TABLE IF EXISTS `user`;
@@ -60,6 +61,20 @@ CREATE TABLE dish (
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_dish_category FOREIGN KEY (category_id) REFERENCES category(category_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB COMMENT='菜品信息表';
+
+CREATE TABLE waiter_call (
+    call_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    table_id INT NOT NULL,
+    user_id BIGINT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/HANDLED',
+    remark VARCHAR(255),
+    call_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    handled_time DATETIME NULL,
+    handled_by BIGINT NULL,
+    CONSTRAINT fk_waiter_call_table FOREIGN KEY (table_id) REFERENCES table_info(table_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_waiter_call_user FOREIGN KEY (user_id) REFERENCES `user`(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_waiter_call_handler FOREIGN KEY (handled_by) REFERENCES `user`(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB COMMENT='顾客呼叫服务员记录表';
 
 CREATE TABLE orders (
     order_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -118,6 +133,8 @@ CREATE INDEX idx_dish_name ON dish(dish_name);
 CREATE INDEX idx_order_time ON orders(order_time);
 CREATE INDEX idx_order_status ON orders(status);
 CREATE INDEX idx_refund_time ON refund_record(refund_time);
+CREATE INDEX idx_waiter_call_status ON waiter_call(status);
+CREATE INDEX idx_waiter_call_time ON waiter_call(call_time);
 
 CREATE OR REPLACE VIEW v_order_details AS
 SELECT o.order_id, o.order_time, t.table_number, d.dish_name, od.quantity, od.unit_price,

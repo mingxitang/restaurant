@@ -1,0 +1,136 @@
+<navigation-bar title="点餐" back="{{true}}" color="black" background="#ffffff"></navigation-bar>
+<view class="page">
+  <view class="menu-header">
+    <view class="header-top">
+      <view class="header-copy">
+        <text class="table-name">{{tableNumber}}</text>
+        <text class="subtitle">选择菜品后可统一下单</text>
+      </view>
+      <button class="order-button" bindtap="onGoOrder">订单</button>
+    </view>
+    <view class="service-card">
+      <view class="service-copy">
+        <text class="service-title">需要帮助？</text>
+        <text class="service-desc">呼叫服务员处理加水、餐具、咨询等需求</text>
+      </view>
+      <button class="service-button" loading="{{callingWaiter}}" disabled="{{callingWaiter}}" bindtap="onCallWaiter">
+        呼叫服务员
+      </button>
+    </view>
+  </view>
+
+  <view class="search-box">
+    <input
+      class="search-input"
+      value="{{keyword}}"
+      placeholder="搜索菜品"
+      bindinput="onKeywordInput"
+    />
+  </view>
+
+  <scroll-view class="category-tabs" scroll-x>
+    <view
+      class="category-tab {{activeCat === '' ? 'active' : ''}}"
+      data-id=""
+      bindtap="onSelectCategory"
+    >全部</view>
+    <view
+      wx:for="{{categories}}"
+      wx:key="categoryId"
+      class="category-tab {{item.categoryIdText === activeCat ? 'active' : ''}}"
+      data-id="{{item.categoryIdText}}"
+      bindtap="onSelectCategory"
+    >{{item.categoryName}}</view>
+  </scroll-view>
+
+  <text wx:if="{{error}}" class="error">{{error}}</text>
+  <view wx:if="{{loading}}" class="state">菜单加载中...</view>
+
+  <view wx:elif="{{filteredDishes.length}}" class="dish-list">
+    <view
+      wx:for="{{filteredDishes}}"
+      wx:key="dishId"
+      class="dish-card {{item.disabledClass}}"
+    >
+      <view class="dish-thumb">
+        <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"></image>
+        <text wx:else>{{item.initial}}</text>
+      </view>
+
+      <view class="dish-info">
+        <text class="dish-name">{{item.dishName}}</text>
+        <text wx:if="{{item.description}}" class="dish-desc">{{item.description}}</text>
+        <text class="dish-price">¥{{item.displayPrice}}</text>
+        <text wx:if="{{item.showLowStock}}" class="stock">仅剩 {{item.stock}} 份</text>
+        <text wx:elif="{{item.soldOut}}" class="stock sold-out">已售罄</text>
+      </view>
+
+      <view wx:if="{{item.canAdd}}" class="dish-stepper">
+        <view
+          wx:if="{{item.cartCount > 0}}"
+          class="step-button"
+          data-id="{{item.dishId}}"
+          bindtap="onDecreaseQty"
+        >-</view>
+        <input
+          wx:if="{{item.cartCount > 0}}"
+          class="step-count"
+          type="number"
+          value="{{item.cartCount}}"
+          data-id="{{item.dishId}}"
+          bindinput="onCartCountInput"
+        />
+        <view
+          class="step-button"
+          data-index="{{index}}"
+          bindtap="onAddDish"
+        >+</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="state">暂无菜品</view>
+
+  <view wx:if="{{cartOpen && cartCount > 0}}" class="cart-drawer">
+    <view class="drawer-header">
+      <text class="drawer-title">未下单菜品</text>
+      <view class="drawer-actions">
+        <button bindtap="onClearCart">清空</button>
+        <button bindtap="onToggleCart">收起</button>
+      </view>
+    </view>
+
+    <view wx:for="{{cart}}" wx:key="dishId" class="cart-item">
+      <view class="cart-main">
+        <text class="cart-name">{{item.dishName}}</text>
+        <text class="cart-price">¥{{item.displayPrice}} / 份</text>
+        <input
+          class="remark-input"
+          value="{{item.remark}}"
+          placeholder="备注：少辣、不要葱等"
+          data-id="{{item.dishId}}"
+          bindinput="onRemarkInput"
+        />
+      </view>
+
+      <view class="qty">
+        <button data-id="{{item.dishId}}" bindtap="onDecreaseQty">-</button>
+        <text>{{item.quantity}}</text>
+        <button data-id="{{item.dishId}}" bindtap="onIncreaseQty">+</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{cartCount > 0}}" class="cart-bar">
+    <view class="cart-summary" bindtap="onToggleCart">
+      <text class="cart-count">{{cartCount}}</text>
+      <view>
+        <text class="cart-total">¥{{cartTotalText}}</text>
+        <text class="cart-tip">{{cartOpen ? '点击收起' : '查看未下单菜品'}}</text>
+      </view>
+    </view>
+    <button class="submit-order" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmitOrder">
+      {{submitting ? '下单中...' : '下单'}}
+    </button>
+  </view>
+</view>

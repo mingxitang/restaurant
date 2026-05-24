@@ -1,0 +1,87 @@
+<navigation-bar title="{{title}}" back="{{true}}" color="black" background="#ffffff"></navigation-bar>
+<view class="page">
+  <view class="page-header">
+    <view>
+      <text class="title">{{title}}</text>
+      <text class="subtitle">确认订单金额和状态</text>
+    </view>
+  </view>
+
+  <text wx:if="{{error}}" class="error">{{error}}</text>
+  <text wx:if="{{message}}" class="message">{{message}}</text>
+
+  <view wx:if="{{loading}}" class="state">订单加载中...</view>
+
+  <view wx:elif="{{order}}" class="pay-panel">
+    <view class="order-row">
+      <text>订单号</text>
+      <text>#{{order.orderId}}</text>
+    </view>
+    <view class="order-row">
+      <text>订单状态</text>
+      <text>{{order.statusText}}</text>
+    </view>
+    <view class="amount-box">
+      <text class="amount-label">应付金额</text>
+      <text class="amount">¥{{order.totalAmountText}}</text>
+    </view>
+
+    <view wx:if="{{mode === 'pay'}}" class="section">
+      <text class="section-title">支付方式</text>
+      <radio-group bindchange="onPayMethodChange">
+        <label class="method">
+          <radio value="WECHAT" checked="{{payMethod === 'WECHAT'}}"></radio>
+          <text>微信支付（模拟）</text>
+        </label>
+        <label class="method">
+          <radio value="CASH" checked="{{payMethod === 'CASH'}}"></radio>
+          <text>到店现金支付</text>
+        </label>
+      </radio-group>
+
+      <button
+        class="primary full"
+        loading="{{paying}}"
+        disabled="{{paying || !order.canPay}}"
+        bindtap="onPay"
+      >
+        {{order.canPay ? (paying ? '支付中...' : '确认支付') : '已支付'}}
+      </button>
+    </view>
+
+    <view wx:if="{{mode === 'review'}}" class="section">
+      <text class="section-title">评分</text>
+      <view class="rating">
+        <text
+          wx:for="{{ratingOptions}}"
+          wx:key="*this"
+          data-value="{{item}}"
+          class="star {{item <= rating ? 'active' : ''}}"
+          bindtap="onRatingTap"
+        >★</text>
+      </view>
+
+      <textarea
+        class="review-input"
+        value="{{content}}"
+        placeholder="菜品味道、上菜速度、服务体验都可以写在这里"
+        maxlength="200"
+        bindinput="onContentInput"
+      ></textarea>
+
+      <button
+        class="primary full"
+        loading="{{submittingReview}}"
+        disabled="{{submittingReview || !order.canReview}}"
+        bindtap="onSubmitReview"
+      >
+        {{submittingReview ? '提交中...' : '提交评价'}}
+      </button>
+    </view>
+  </view>
+
+  <view wx:else class="empty">
+    <text>暂无可处理的订单。</text>
+    <button class="primary full" bindtap="onBackOrder">返回订单</button>
+  </view>
+</view>

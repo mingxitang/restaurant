@@ -47,3 +47,6 @@ export const createRefund = (data) => http.post('/refunds', data)
 
 export const listReviews = () => http.get('/reviews')
 export const createReview = (data) => http.post('/reviews', data)
+
+export const listWaiterCalls = (params) => http.get('/waiter-calls', { params })
+export const handleWaiterCall = (id, data) => http.put(`/waiter-calls/${id}/handle`, data)

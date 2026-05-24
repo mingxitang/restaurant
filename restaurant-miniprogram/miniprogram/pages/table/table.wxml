@@ -1,0 +1,49 @@
+<navigation-bar title="选择桌台" back="{{false}}" color="black" background="#ffffff"></navigation-bar>
+<view class="page">
+  <view class="page-header">
+    <view>
+      <text class="title">请选择桌台</text>
+      <text class="subtitle">选择您当前所在的位置后开始点餐</text>
+    </view>
+    <button class="logout" bindtap="onLogout">退出</button>
+  </view>
+
+  <view class="manual-box">
+    <input
+      class="manual-input"
+      value="{{manualNumber}}"
+      placeholder="手动输入桌号"
+      bindinput="onManualInput"
+      confirm-type="done"
+      bindconfirm="onManualConfirm"
+    />
+    <button class="manual-button" bindtap="onManualConfirm">确认</button>
+  </view>
+
+  <text wx:if="{{error}}" class="error">{{error}}</text>
+
+  <view wx:if="{{loading}}" class="state">桌台加载中...</view>
+  <view wx:elif="{{selecting}}" class="state">正在进入桌台...</view>
+
+  <view wx:elif="{{tables.length}}" class="table-grid">
+    <view
+      wx:for="{{tables}}"
+      wx:key="tableId"
+      data-index="{{index}}"
+      class="table-card {{item.status === 'FREE' ? '' : 'occupied'}}"
+      bindtap="onSelectTable"
+    >
+      <view class="table-top">
+        <text class="table-name">{{item.tableName || item.tableNumber}}</text>
+        <text class="status {{item.status === 'FREE' ? 'free' : 'busy'}}">
+          {{item.status === 'FREE' ? '空闲' : '用餐中'}}
+        </text>
+      </view>
+      <text class="table-meta">{{item.area || '大厅'}} · {{item.capacity}}人</text>
+    </view>
+  </view>
+
+  <view wx:else class="state">
+    <text>暂无桌台数据</text>
+  </view>
+</view>

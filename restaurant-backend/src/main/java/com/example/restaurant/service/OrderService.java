@@ -43,6 +43,14 @@ public class OrderService {
         return order;
     }
 
+    public Order activeByTableId(Integer tableId) {
+        Order order = orderMapper.findActiveByTableId(tableId);
+        if (order != null) {
+            order.setDetails(orderMapper.findDetails(order.getOrderId()));
+        }
+        return order;
+    }
+
     @Transactional
     public Order create(OrderCreateRequest request) {
         if (request.getItems() == null || request.getItems().isEmpty()) {

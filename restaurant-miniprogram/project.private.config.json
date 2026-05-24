@@ -1,0 +1,41 @@
+{
+  "libVersion": "2.32.3",
+  "projectname": "restaurant-miniprogram",
+  "setting": {
+    "urlCheck": false,
+    "coverView": false,
+    "lazyloadPlaceholderEnable": false,
+    "skylineRenderEnable": true,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "useApiHook": true,
+    "showShadowRootInWxmlPanel": false,
+    "useStaticServer": false,
+    "useLanDebug": false,
+    "showES6CompileOption": false,
+    "compileHotReLoad": true,
+    "bigPackageSizeSupport": false,
+    "checkInvalidKey": true,
+    "ignoreDevUnusedFiles": true
+  },
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "pages/table/table2",
+          "pathName": "pages/table/table",
+          "query": "tableNumber=A02",
+          "scene": null,
+          "launchMode": "default"
+        },
+        {
+          "name": "pages/table/table",
+          "pathName": "pages/table/table",
+          "query": "tableNumber=A01",
+          "launchMode": "default",
+          "scene": null
+        }
+      ]
+    }
+  }
+}

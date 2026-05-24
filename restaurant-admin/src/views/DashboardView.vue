@@ -18,6 +18,27 @@
       <article><span>低库存菜品</span><strong>{{ data.lowStockDishes || 0 }}</strong></article>
     </div>
 
+    <section class="waiter-call-panel" v-if="!isChef">
+      <div class="waiter-call-head">
+        <div>
+          <h3>服务呼叫</h3>
+          <p>顾客通过小程序呼叫服务员后会显示在这里</p>
+        </div>
+        <button class="ghost" @click="loadWaiterCalls">刷新</button>
+      </div>
+      <div v-if="waiterCalls.length" class="waiter-call-list">
+        <article v-for="call in waiterCalls" :key="call.callId" class="waiter-call-item">
+          <div>
+            <strong>{{ call.tableNumber || ('桌台 #' + call.tableId) }}</strong>
+            <span>{{ call.remark || '顾客呼叫服务员' }}</span>
+            <small>{{ call.callTime }}</small>
+          </div>
+          <button @click="completeWaiterCall(call)">已处理</button>
+        </article>
+      </div>
+      <p v-else class="compact-empty">暂无待处理服务呼叫</p>
+    </section>
+
     <div class="floor-head">
       <h3>桌台</h3>
       <div class="legend">
@@ -278,10 +299,12 @@ import {
   listDishes,
   listOrders,
   listTables,
+  listWaiterCalls,
   monthlyRevenue,
   payOrder,
   transferTable,
   unpayOrder,
+  handleWaiterCall,
   updateOrderStatus,
   updateTable,
   updateTableStatus
@@ -290,6 +313,7 @@ import {
 const data = ref({})
 const tables = ref([])
 const orders = ref([])
+const waiterCalls = ref([])
 const dishes = ref([])
 const categories = ref([])
 const activeTable = ref(null)
@@ -321,6 +345,7 @@ const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i)
 const activeOrders = ref([])
 const refundDrafts = reactive({})
 const showEditMode = ref(false)
+let waiterCallTimer = null
 const editForm = reactive({})
 const newTableForm = reactive({
   tableNumber: '',
@@ -467,7 +492,8 @@ async function load() {
     listOrders(),
     listDishes(),
     listCategories(),
-    monthlyRevenue()
+    monthlyRevenue(),
+    listWaiterCalls({ status: 'PENDING' })
   ])
   data.value = results[0].status === 'fulfilled' ? results[0].value : {}
   tables.value = results[1].status === 'fulfilled' ? results[1].value : []
@@ -475,6 +501,22 @@ async function load() {
   dishes.value = results[3].status === 'fulfilled' ? results[3].value : []
   categories.value = results[4].status === 'fulfilled' ? results[4].value : []
   months.value = results[5].status === 'fulfilled' ? results[5].value : []
+  waiterCalls.value = results[6].status === 'fulfilled' ? results[6].value : []
+}
+
+async function loadWaiterCalls() {
+  if (isChef.value) return
+  waiterCalls.value = await listWaiterCalls({ status: 'PENDING' })
+}
+
+async function completeWaiterCall(call) {
+  try {
+    await handleWaiterCall(call.callId, { handledBy: user.value.userId })
+    message.value = `${call.tableNumber || '该桌台'} 的服务呼叫已处理。`
+    await loadWaiterCalls()
+  } catch (error) {
+    message.value = error.message || '处理服务呼叫失败'
+  }
 }
 
 function isPaid(order) {
@@ -739,12 +781,14 @@ async function refreshAfterTableMutation() {
     dashboard(),
     listOrders(),
     listDishes(),
-    listTables()
+    listTables(),
+    listWaiterCalls({ status: 'PENDING' })
   ])
   data.value = results[0].status === 'fulfilled' ? results[0].value : {}
   orders.value = results[1].status === 'fulfilled' ? results[1].value : []
   dishes.value = results[2].status === 'fulfilled' ? results[2].value : []
   tables.value = results[3].status === 'fulfilled' ? results[3].value : []
+  waiterCalls.value = results[4].status === 'fulfilled' ? results[4].value : waiterCalls.value
   if (activeTable.value) {
     const latestTable = (results[3].status === 'fulfilled' ? results[3].value : []).find((table) => table.tableId === activeTable.value.tableId)
     if (latestTable) {
@@ -763,10 +807,74 @@ function handleDocumentClick(event) {
 
 onMounted(() => {
   load()
+  waiterCallTimer = window.setInterval(loadWaiterCalls, 5000)
   document.addEventListener('click', handleDocumentClick)
 })
 
 onBeforeUnmount(() => {
+  if (waiterCallTimer) {
+    window.clearInterval(waiterCallTimer)
+  }
   document.removeEventListener('click', handleDocumentClick)
 })
 </script>
+
+<style scoped>
+.waiter-call-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 18px 0;
+}
+
+.waiter-call-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.waiter-call-head h3 {
+  margin: 0;
+}
+
+.waiter-call-head p {
+  color: #6b7280;
+  margin: 4px 0 0;
+}
+
+.waiter-call-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.waiter-call-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.waiter-call-item strong,
+.waiter-call-item span,
+.waiter-call-item small {
+  display: block;
+}
+
+.waiter-call-item span {
+  color: #92400e;
+  margin-top: 4px;
+}
+
+.waiter-call-item small {
+  color: #6b7280;
+  margin-top: 4px;
+}
+</style>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.restaurant.mapper.WaiterCallMapper">
+    <select id="findAll" resultType="WaiterCall">
+        SELECT wc.*,
+               t.table_number,
+               u.username,
+               h.username AS handler_name
+        FROM waiter_call wc
+        LEFT JOIN table_info t ON wc.table_id = t.table_id
+        LEFT JOIN `user` u ON wc.user_id = u.user_id
+        LEFT JOIN `user` h ON wc.handled_by = h.user_id
+        <where>
+            <if test="status != null and status != ''">AND wc.status = #{status}</if>
+        </where>
+        ORDER BY wc.call_time DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="callId">
+        INSERT INTO waiter_call(table_id, user_id, status, remark)
+        VALUES(#{tableId}, #{userId}, #{status}, #{remark})
+    </insert>
+
+    <update id="handle">
+        UPDATE waiter_call
+        SET status = 'HANDLED',
+            handled_time = NOW(),
+            handled_by = #{handledBy}
+        WHERE call_id = #{callId}
+          AND status = 'PENDING'
+    </update>
+</mapper>

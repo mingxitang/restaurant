@@ -1,0 +1,66 @@
+<navigation-bar title="我的订单" back="{{true}}" color="black" background="#ffffff"></navigation-bar>
+<view class="page">
+  <view class="page-header">
+    <view>
+      <text class="title">我的订单</text>
+      <text class="subtitle">{{subtitle}}</text>
+    </view>
+    <button class="refresh" bindtap="onRefresh">刷新</button>
+  </view>
+
+  <text wx:if="{{error}}" class="error">{{error}}</text>
+  <text wx:if="{{message}}" class="message">{{message}}</text>
+
+  <view wx:if="{{loading}}" class="state">订单加载中...</view>
+
+  <view wx:elif="{{order}}" class="order-panel">
+    <view class="order-top">
+      <view>
+        <text class="order-id">订单 #{{order.orderId}}</text>
+        <text class="order-table">桌台：{{tableNumber}}</text>
+      </view>
+      <text class="status">{{order.statusText}}</text>
+    </view>
+
+    <view class="detail-list">
+      <view wx:for="{{order.details}}" wx:key="dishId" class="detail-item">
+        <view class="detail-main">
+          <text class="dish-name">{{item.dishName}}</text>
+          <text class="dish-meta">¥{{item.unitPriceText}} x {{item.quantity}}</text>
+          <text wx:if="{{item.hasRemark}}" class="remark">{{item.remark}}</text>
+          <text wx:if="{{item.cookingText}}" class="cooking">{{item.cookingText}}</text>
+        </view>
+        <text class="amount">¥{{item.amountText}}</text>
+      </view>
+    </view>
+
+    <view class="total-row">
+      <text>合计</text>
+      <text>¥{{order.totalAmountText}}</text>
+    </view>
+
+    <view wx:if="{{order.canRemind}}" class="remind-box">
+      <view>
+        <text class="remind-title">催单提醒</text>
+        <text class="remind-desc">{{order.reminderText}}</text>
+      </view>
+      <button class="remind-button" loading="{{reminding}}" disabled="{{reminding}}" bindtap="onRemind">
+        {{reminding ? '提交中' : '催单'}}
+      </button>
+    </view>
+
+    <view wx:if="{{order.canPay}}" class="actions">
+      <button class="secondary" bindtap="onGoMenu">再加菜</button>
+      <button class="primary" bindtap="onGoPay">去支付</button>
+    </view>
+
+    <view wx:if="{{order.canReview}}" class="single-action">
+      <button class="primary full" bindtap="onGoReview">{{order.reviewButtonText}}</button>
+    </view>
+  </view>
+
+  <view wx:else class="empty">
+    <text>暂无订单，请先点菜下单。</text>
+    <button class="primary full" bindtap="onGoMenu">去点菜</button>
+  </view>
+</view>

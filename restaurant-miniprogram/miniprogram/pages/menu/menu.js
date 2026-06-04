@@ -365,6 +365,21 @@ Page({
     wx.navigateTo({ url: '/pages/order/order' })
   },
 
+  onSwitchTable: function () {
+    wx.showModal({
+      title: '切换桌台',
+      content: '切换桌台会清空当前未下单购物车，确认继续吗？',
+      confirmText: '切换',
+      success: function (res) {
+        if (!res.confirm) return
+        wx.removeStorageSync(STORAGE_KEYS.customerTable)
+        wx.removeStorageSync(STORAGE_KEYS.customerCart)
+        wx.removeStorageSync(STORAGE_KEYS.currentOrder)
+        wx.redirectTo({ url: '/pages/table/table' })
+      },
+    })
+  },
+
   onCallWaiter: function () {
     var table = this.data.table
     var user = wx.getStorageSync(STORAGE_KEYS.user)

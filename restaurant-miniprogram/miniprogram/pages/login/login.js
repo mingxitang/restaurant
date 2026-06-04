@@ -1,11 +1,12 @@
-var login = require('../../api/index').login
+var api = require('../../api/index')
 var STORAGE_KEYS = require('../../config/index').STORAGE_KEYS
 
 Page({
   data: {
-    phone: '',
+    phone: '13800000001',
     password: '123456',
     loading: false,
+    wxLoading: false,
     error: '',
   },
 
@@ -57,11 +58,9 @@ Page({
 
     this.setData({ loading: true, error: '' })
 
-    login({ phone: phone, password: password })
+    api.login({ phone: phone, password: password })
       .then(function (user) {
-        wx.setStorageSync(STORAGE_KEYS.token, user.token)
-        wx.setStorageSync(STORAGE_KEYS.user, user)
-        this.goAfterLogin()
+        this.saveLoginAndGo(user)
       }.bind(this))
       .catch(function (error) {
         this.setData({
@@ -69,6 +68,54 @@ Page({
           loading: false,
         })
       }.bind(this))
+  },
+
+  onWxLogin: function () {
+    if (this.data.wxLoading) return
+
+    this.setData({
+      wxLoading: true,
+      error: '',
+    })
+
+    wx.login({
+      success: function (res) {
+        if (!res.code) {
+          this.setData({
+            wxLoading: false,
+            error: '微信登录失败，未获取到 code',
+          })
+          return
+        }
+
+        api.wxLogin({ code: res.code })
+          .then(function (user) {
+            this.saveLoginAndGo(user)
+          }.bind(this))
+          .catch(function (error) {
+            this.setData({
+              wxLoading: false,
+              error: error.message || '微信登录失败',
+            })
+          }.bind(this))
+      }.bind(this),
+      fail: function () {
+        this.setData({
+          wxLoading: false,
+          error: '微信登录失败，请稍后重试',
+        })
+      }.bind(this),
+    })
+  },
+
+  saveLoginAndGo: function (user) {
+    wx.setStorageSync(STORAGE_KEYS.token, user.token)
+    wx.setStorageSync(STORAGE_KEYS.user, user)
+    this.setData({
+      loading: false,
+      wxLoading: false,
+    })
+    this.goAfterLogin()
   },
 
   goAfterLogin: function () {

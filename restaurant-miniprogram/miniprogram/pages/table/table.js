@@ -1,6 +1,25 @@
 var api = require('../../api/index')
 var STORAGE_KEYS = require('../../config/index').STORAGE_KEYS
 
+function parseTableParam(options) {
+  if (!options) return ''
+  if (options.tableId || options.tableNumber || options.table) {
+    return options.tableId || options.tableNumber || options.table
+  }
+  if (!options.scene) return ''
+
+  var scene = decodeURIComponent(options.scene)
+  var pairs = scene.split('&')
+  for (var i = 0; i < pairs.length; i += 1) {
+    var pair = pairs[i].split('=')
+    if (pair[0] === 'tableId' || pair[0] === 'tableNumber' || pair[0] === 'table') {
+      return pair[1]
+    }
+  }
+
+  return scene
+}
+
 Page({
   data: {
     tables: [],
@@ -12,10 +31,7 @@ Page({
   },
 
   onLoad: function (options) {
-    var pending = ''
-    if (options) {
-      pending = options.tableId || options.tableNumber || options.table || ''
-    }
+    var pending = parseTableParam(options)
     this.setData({
       pendingTableValue: pending ? String(pending) : '',
     })

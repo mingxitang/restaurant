@@ -3,6 +3,7 @@ package com.example.restaurant.controller;
 import com.example.restaurant.common.ApiResponse;
 import com.example.restaurant.dto.LoginRequest;
 import com.example.restaurant.dto.LoginResponse;
+import com.example.restaurant.dto.WxLoginRequest;
 import com.example.restaurant.service.AuthService;
 import com.example.restaurant.service.TokenBlacklist;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,6 +26,11 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    @PostMapping("/wx-login")
+    public ApiResponse<LoginResponse> wxLogin(@RequestBody WxLoginRequest request) {
+        return ApiResponse.ok(authService.wxLogin(request));
     }
 
     @PostMapping("/logout")

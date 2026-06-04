@@ -22,7 +22,7 @@
         <input type="file" accept="image/*" @change="uploadImage" />
         上传图片
       </label>
-      <img v-if="form.image" class="dish-image-preview" :src="form.image" alt="菜品图片" />
+      <img v-if="form.image" class="dish-image-preview" :src="imageUrl(form.image)" alt="菜品图片" />
       <button>保存菜品</button>
     </form>
     <p class="warning-summary" v-if="lowStockCount > 0">
@@ -45,7 +45,7 @@
         <tr v-for="item in rows" :key="item.dishId" class="editable-row" :class="{ 'low-stock-row': isLowStock(item) }" @click="edit(item)">
           <td><input type="checkbox" :checked="selectedIds.includes(item.dishId)" @click.stop @change="toggleOne(item.dishId, $event.target.checked)" /></td>
           <td>
-            <img v-if="item.image" class="dish-thumb-small" :src="item.image" alt="菜品图片" />
+            <img v-if="item.image" class="dish-thumb-small" :src="imageUrl(item.image)" alt="菜品图片" />
             <span v-else class="dish-thumb-empty">无图</span>
           </td>
           <td>{{ item.dishName }}</td>
@@ -76,6 +76,12 @@ const batching = ref(false)
 const form = reactive({ dishId: null, dishName: '', price: null, stock: 0, image: '', categoryId: null, available: true })
 const lowStockCount = computed(() => rows.value.filter(isLowStock).length)
 const allSelected = computed(() => rows.value.length > 0 && selectedIds.value.length === rows.value.length)
+
+function imageUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return url.startsWith('/') ? url : `/${url}`
+}
 
 function isLowStock(item) {
   return Number(item.stock || 0) <= 10

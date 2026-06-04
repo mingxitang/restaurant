@@ -9,6 +9,7 @@ public class User {
     private Long userId;
     private String username;
     private String phone;
+    private String wxOpenid;
     private Integer points;
     private String password;
     private Integer roleId;

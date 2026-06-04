@@ -35,7 +35,13 @@ app:
   # Windows（默认）: enabled: false，使用内存黑名单，不需要装 Redis
   # WSL / Linux:     enabled: true，同时删除上面 autoconfigure.exclude 并启用下方 spring.data.redis
   redis:
-    enabled: false
+    enabled: false
+
+  wechat:
+
+    app-id: ${WECHAT_APP_ID:}
+
+    secret: ${WECHAT_APP_SECRET:}
 
 # ========== Redis 连接配置（启用时取消注释）==========
 #spring:

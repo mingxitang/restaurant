@@ -8,6 +8,14 @@ function login(data) {
   })
 }
 
+function wxLogin(data) {
+  return request('/api/auth/wx-login', {
+    method: 'POST',
+    data: data,
+    skipAuth: true,
+  })
+}
+
 function logout() {
   return request('/api/auth/logout', { method: 'POST' })
 }
@@ -66,6 +74,7 @@ function callWaiter(tableId, userId) {
 
 module.exports = {
   login: login,
+  wxLogin: wxLogin,
   logout: logout,
   listTables: listTables,
   getMenu: getMenu,

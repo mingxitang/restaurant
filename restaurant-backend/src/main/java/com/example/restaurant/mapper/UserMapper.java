@@ -8,7 +8,11 @@ import java.util.List;
 public interface UserMapper {
     User findByPhone(@Param("phone") String phone);
 
+    User findByWxOpenid(@Param("wxOpenid") String wxOpenid);
+
     User findById(@Param("userId") Long userId);
+
+    Integer findRoleIdByName(@Param("roleName") String roleName);
 
     List<User> findAll(@Param("keyword") String keyword);
 

@@ -1,4 +1,5 @@
-var API_BASE_URL = 'http://localhost:8080'
+//var API_BASE_URL = 'http://localhost:8080'
+var API_BASE_URL = 'http://10.108.219.95:8080'
 
 var STORAGE_KEYS = {
   token: 'token',

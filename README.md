@@ -10,7 +10,9 @@
 restaurant
 ├─ restaurant-backend    Spring Boot 后端服务
 ├─ restaurant-admin      管理端：管理员、服务员、厨师使用
-├─ restaurant-customer   顾客端：扫码点餐、查看订单、支付评价
+├─ restaurant-customer   顾客端 Web 版：扫码点餐、查看订单、支付评价
+├─ restaurant-miniprogram 顾客端微信小程序版
+├─ docs                  专项说明文档
 ├─ ROADMAP.md            后续完善路线
 └─ 项目问题总结与知识点.md
 ```
@@ -35,18 +37,29 @@ restaurant
 - Axios
 - 原生 CSS
 
+小程序：
+
+- 微信原生小程序
+- WXML / WXSS / JavaScript
+- `wx.request`
+- 本地缓存 `wx.setStorageSync`
+
 ## 三、核心功能
 
 ### 1. 顾客端
 
-- 支持通过 URL 参数带入桌号，例如 `/menu?table=3`。
+- Web 版支持通过 URL 参数带入桌号，例如 `/menu?table=3`。
+- 小程序版支持通过桌台二维码进入点餐页，例如 `pages/table/table?tableId=1`。
+- 小程序版支持 `scene` 参数，适配微信小程序码扫码进入桌台。
 - 支持浏览菜单、分类筛选、搜索菜品。
 - 支持菜品图片展示，未上传图片时显示缺省占位。
 - 点菜页底部购物车可展开查看未下单菜品。
+- 小程序点菜页支持菜品步进器，支持 `+/-` 和键盘输入份数。
 - 新菜品点击“下单”后直接生成订单。
 - 已下单且没有新增菜品时显示“去支付”。
 - 订单页展示已点菜品、订单金额、厨房制作状态。
 - 支持顾客催单，催单信息会同步到厨房看板。
+- 支持呼叫服务员，管理端首页显示待处理服务呼叫。
 - 支付页展示已点菜品详情，模拟支付成功后释放桌台。
 - 支持提交评价。
 
@@ -60,6 +73,8 @@ restaurant
 - 支持换桌、并桌和合并订单。
 - 今日订单支持搜索、金额区间、日期、时段和状态筛选。
 - 首页展示今日订单、已收金额、未收金额、空闲桌位、低库存菜品。
+- 首页展示待处理服务呼叫，可标记已处理。
+- 桌台卡片可生成扫码点单二维码，支持下载打印。
 - 报表支持热销菜品、低库存菜品、评价筛选、退菜原因统计。
 
 ### 3. 后厨看板
@@ -73,6 +88,7 @@ restaurant
 ### 4. 订单与库存
 
 - 一桌一单：同一桌未结账时，加菜会追加到当前订单。
+- 小程序扫码进入桌台时，会按桌台找回当前 `PENDING` 或 `PAID` 订单。
 - 同一道菜重复加菜时，合并数量，不重复插入明细。
 - 下单扣减库存。
 - 退菜可回滚库存，并同步订单金额。
@@ -102,6 +118,8 @@ source restaurant-backend/src/main/resources/sql/migration-add-order-detail-rema
 source restaurant-backend/src/main/resources/sql/migration-add-detail-status.sql;
 source restaurant-backend/src/main/resources/sql/migration-add-order-reminder.sql;
 source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
+source restaurant-backend/src/main/resources/sql/migration-add-waiter-call.sql;
+source restaurant-backend/src/main/resources/sql/migration-add-user-wx-openid.sql;
 ```
 
 当前默认数据库配置在：
@@ -186,6 +204,53 @@ http://localhost:5174
 http://localhost:5174/menu?table=1
 ```
 
+### 4. 打开微信小程序顾客端
+
+在微信开发者工具中打开目录：
+
+```text
+restaurant-miniprogram
+```
+
+开发阶段后端地址在：
+
+```text
+restaurant-miniprogram/miniprogram/config/index.js
+```
+
+默认是：
+
+```js
+var API_BASE_URL = 'http://localhost:8080'
+```
+
+微信一键登录需要后端配置微信小程序信息：
+
+```bash
+set WECHAT_APP_ID=你的微信小程序AppID
+set WECHAT_APP_SECRET=你的微信小程序AppSecret
+```
+
+或在 WSL/Linux 中：
+
+```bash
+export WECHAT_APP_ID=你的微信小程序AppID
+export WECHAT_APP_SECRET=你的微信小程序AppSecret
+```
+
+然后重启后端。
+
+如果未配置，手机号密码登录仍可使用，微信登录会提示后端未配置微信小程序信息。
+
+在微信开发者工具中模拟扫码：
+
+1. 点击“普通编译”旁边的下拉菜单。
+2. 选择“添加编译模式”。
+3. 启动页面填写：`pages/table/table`。
+4. 启动参数填写：`tableId=1` 或 `tableNumber=A02`。
+
+更多小程序联调说明见：[docs/WECHAT_MINIPROGRAM.md](docs/WECHAT_MINIPROGRAM.md)
+
 ## 七、打包验证
 
 后端编译：
@@ -199,6 +264,7 @@ mvn -q -DskipTests package
 
 ```bash
 cd restaurant-admin
+npm install
 npm run build
 ```
 
@@ -225,12 +291,19 @@ restaurant-backend/uploads/dishes/
 
 后端通过 `/uploads/**` 对外提供静态资源访问。管理端和顾客端的 `vite.config.js` 已配置 `/uploads` 代理到后端，所以开发环境下上传后可以直接在页面看到图片。
 
+后端安全配置已放行：
+
+```text
+GET /uploads/**
+```
+
 如果图片上传成功但页面不显示，请检查：
 
 - 后端是否已启动。
 - 管理端或顾客端是否已重启。
 - 图片路径是否以 `/uploads/dishes/` 开头。
-- 浏览器开发者工具 Network 中图片请求是否为 404。
+- 浏览器开发者工具 Network 中图片请求是否为 403 或 404。
+- 如果是 403，请确认后端已重启，使 `/uploads/**` 放行配置生效。
 
 ## 九、角色权限说明
 
@@ -325,12 +398,25 @@ source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
 
 请确认前端已重启，因为 `/uploads` 代理配置在 `vite.config.js` 中，修改后需要重启 Vite 开发服务器。
 
+如果小程序中菜品图片不显示，请确认：
+
+- 后端已重启。
+- `restaurant-miniprogram/miniprogram/config/index.js` 中的 `API_BASE_URL` 能访问后端。
+- 开发者工具已关闭合法域名校验，或正式环境已配置 HTTPS 合法域名。
+- 图片请求不是 403；如果是 403，说明后端静态资源放行配置未生效。
+
 ## 十二、后续优化方向
 
 后续计划记录在：
 
 ```text
 ROADMAP.md
+```
+
+近期变更记录在：
+
+```text
+docs/CHANGELOG.md
 ```
 
 已完成前四阶段：稳定性与文档统一、订单业务闭环、顾客端体验增强、管理端运营能力。

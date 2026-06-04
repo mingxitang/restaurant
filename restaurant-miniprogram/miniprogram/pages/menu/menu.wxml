@@ -6,6 +6,9 @@
         <text class="table-name">{{tableNumber}}</text>
         <text class="subtitle">选择菜品后可统一下单</text>
       </view>
+    </view>
+    <view class="top-actions">
+      <button class="order-button" bindtap="onSwitchTable">换桌</button>
       <button class="order-button" bindtap="onGoOrder">订单</button>
     </view>
     <view class="service-card">

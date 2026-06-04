@@ -28,7 +28,7 @@
         LEFT JOIN table_info t ON o.table_id = t.table_id
         LEFT JOIN `user` u ON o.user_id = u.user_id
         WHERE o.table_id = #{tableId}
-          AND o.status = 'PENDING'
+          AND o.status IN ('PENDING', 'PAID')
         ORDER BY o.order_id ASC
         LIMIT 1
     </select>

@@ -1,0 +1,2 @@
+ALTER TABLE `user`
+    ADD COLUMN wx_openid VARCHAR(64) UNIQUE AFTER phone;

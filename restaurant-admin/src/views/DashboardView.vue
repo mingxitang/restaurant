@@ -73,6 +73,7 @@
           <strong>{{ table.tableName || table.tableNumber }}</strong>
           <span>{{ table.area || '大厅' }} · {{ table.capacity }}人</span>
           <em>{{ statusText(table.status) }}</em>
+          <button v-if="!isChef" class="qr-button" @click.stop="showTableQr(table)">二维码</button>
         </template>
       </div>
       <div v-if="showEditMode" class="floor-table" style="border-style:dashed" @click.stop>
@@ -283,11 +284,32 @@
         </table>
       </div>
     </div>
+
+    <div v-if="qrTable" class="modal-mask" @click.self="closeQrModal">
+      <div class="qr-modal">
+        <header>
+          <div>
+            <h3>{{ qrTable.tableName || qrTable.tableNumber }} 扫码点单</h3>
+            <p>把此二维码打印并贴到对应桌台，顾客扫码后会自动进入该桌点餐。</p>
+          </div>
+          <button class="ghost" @click="closeQrModal">关闭</button>
+        </header>
+        <div class="qr-content">
+          <img v-if="qrDataUrl" :src="qrDataUrl" :alt="`${qrTable.tableNumber}扫码点单二维码`" />
+          <p class="qr-path">{{ qrPath }}</p>
+          <div class="qr-modal-actions">
+            <button class="ghost" @click="copyQrPath">复制路径</button>
+            <a v-if="qrDataUrl" :href="qrDataUrl" :download="`${qrTable.tableNumber || qrTable.tableId}-扫码点单.png`">下载二维码</a>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import QRCode from 'qrcode'
 import {
   createOrder,
   createRefund,
@@ -323,6 +345,9 @@ const cart = ref([])
 const message = ref('')
 const showTodayOrders = ref(false)
 const showMonthlyStats = ref(false)
+const qrTable = ref(null)
+const qrDataUrl = ref('')
+const qrPath = ref('')
 const dishKeyword = ref('')
 const refundKeyword = ref('')
 const transferTargetId = ref(null)
@@ -483,6 +508,36 @@ function statusText(status) {
     RESERVED: '预订',
     CLEANING: '待清扫'
   }[status] || status
+}
+
+function tableQrPath(table) {
+  return `pages/table/table?tableId=${table.tableId}`
+}
+
+async function showTableQr(table) {
+  qrTable.value = table
+  qrPath.value = tableQrPath(table)
+  qrDataUrl.value = await QRCode.toDataURL(qrPath.value, {
+    errorCorrectionLevel: 'M',
+    margin: 2,
+    width: 260
+  })
+}
+
+function closeQrModal() {
+  qrTable.value = null
+  qrDataUrl.value = ''
+  qrPath.value = ''
+}
+
+async function copyQrPath() {
+  if (!qrPath.value) return
+  try {
+    await navigator.clipboard.writeText(qrPath.value)
+    message.value = `已复制扫码路径：${qrPath.value}`
+  } catch (_) {
+    message.value = `扫码路径：${qrPath.value}`
+  }
 }
 
 async function load() {
@@ -876,5 +931,83 @@ onBeforeUnmount(() => {
 .waiter-call-item small {
   color: #6b7280;
   margin-top: 4px;
+}
+
+.qr-button {
+  align-self: flex-start;
+  margin-top: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.qr-modal {
+  width: min(420px, 92vw);
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.qr-modal header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.qr-modal h3 {
+  margin: 0;
+}
+
+.qr-modal p {
+  color: #6b7280;
+  margin: 6px 0 0;
+}
+
+.qr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.qr-content img {
+  width: 260px;
+  height: 260px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.qr-path {
+  width: 100%;
+  color: #374151 !important;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+  word-break: break-all;
+}
+
+.qr-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.qr-modal-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #1d4ed8;
+  color: #fff;
+  padding: 8px 12px;
+  text-decoration: none;
 }
 </style>

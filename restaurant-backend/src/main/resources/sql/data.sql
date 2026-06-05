@@ -1,4 +1,5 @@
 USE restaurant_db;
+SET NAMES utf8mb4;
 
 INSERT INTO role(role_id, role_name) VALUES
 (1, '管理员'), (2, '服务员'), (3, '厨师'), (4, '顾客');

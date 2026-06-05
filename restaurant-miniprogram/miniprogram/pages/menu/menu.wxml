@@ -56,7 +56,13 @@
       class="dish-card {{item.disabledClass}}"
     >
       <view class="dish-thumb">
-        <image wx:if="{{item.imageUrl}}" src="{{item.imageUrl}}" mode="aspectFill"></image>
+        <image
+          wx:if="{{item.imageUrl}}"
+          src="{{item.displayImageUrl || item.imageUrl}}"
+          mode="aspectFill"
+          data-id="{{item.dishId}}"
+          binderror="onDishImageError"
+        ></image>
         <text wx:else>{{item.initial}}</text>
       </view>
 

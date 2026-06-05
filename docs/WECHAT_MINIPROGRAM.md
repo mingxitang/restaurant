@@ -42,9 +42,75 @@ var API_BASE_URL = 'http://localhost:8080'
 var API_BASE_URL = 'http://192.168.1.20:8080'
 ```
 
-正式上线必须使用 HTTPS 域名，并在微信公众平台配置 request 合法域名。
+注意：
 
-## 三、微信登录
+- `localhost` 在真机上表示手机自身，不是开发电脑。
+- 局域网 IP 只适合开发阶段调试。
+- 正式上线必须使用 HTTPS 域名，并在微信公众平台配置 request、uploadFile、downloadFile 合法域名。
+
+## 三、局域网真机调试
+
+局域网 IP 调试的判断顺序：
+
+1. 电脑浏览器访问 `http://电脑IP:8080/api/tables`。
+2. 手机浏览器访问 `http://电脑IP:8080/api/tables`。
+3. 微信真机调试访问小程序。
+
+只有第 2 步成功后，才继续排查小程序代码。
+
+如果后端运行在 WSL 中，还需要确认：
+
+```powershell
+netsh interface portproxy show all
+```
+
+应能看到类似：
+
+```text
+0.0.0.0  8080  172.xx.xx.xx  8080
+```
+
+如果没有转发规则，需要使用管理员 PowerShell 配置：
+
+```powershell
+netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=8080 connectaddress=WSL_IP connectport=8080
+New-NetFirewallRule -DisplayName "Restaurant Backend 8080" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -Profile Any
+```
+
+常见现象：
+
+- `request:fail -118:net::ERR_CONNECTION_TIMED_OUT`：手机无法访问电脑后端，优先检查防火墙、portproxy、手机和电脑是否在同一可互访网络。
+- 电脑可访问但手机不可访问：通常是 Windows 防火墙、公用网络策略或热点隔离。
+- 手机浏览器可访问但小程序不可访问：检查微信开发者工具是否关闭合法域名校验，或改用 HTTPS 合法域名。
+
+## 四、HTTPS 合法域名
+
+稳定真机联调和正式上线建议使用：
+
+```text
+https://api.example.com
+```
+
+基本链路：
+
+```text
+小程序 -> https://api.example.com -> Nginx/网关 -> Spring Boot 8080
+```
+
+需要准备：
+
+- 可访问的域名。
+- 有效 HTTPS 证书。
+- 后端或 Nginx 将 `/api/**` 和 `/uploads/**` 都暴露到 HTTPS。
+- 微信公众平台配置 request、uploadFile、downloadFile 合法域名。
+
+小程序配置改为：
+
+```js
+var API_BASE_URL = 'https://api.example.com'
+```
+
+## 五、微信登录
 
 小程序登录页支持两种登录方式：
 
@@ -94,7 +160,7 @@ $env:WECHAT_APP_SECRET="你的微信小程序AppSecret"
 source restaurant-backend/src/main/resources/sql/migration-add-user-wx-openid.sql;
 ```
 
-## 四、扫码点单
+## 六、扫码点单
 
 桌台入口页面：
 
@@ -119,7 +185,7 @@ pages/table/table?scene=A02
 - `tableNumber` 适合人工测试和演示。
 - `scene` 用于适配微信小程序码。
 
-## 五、在微信开发者工具中模拟扫码
+## 七、在微信开发者工具中模拟扫码
 
 1. 打开微信开发者工具。
 2. 点击顶部“普通编译”旁边的下拉菜单。
@@ -148,7 +214,7 @@ tableNumber=A02
 scene=tableId%3D1
 ```
 
-## 六、管理端桌台二维码
+## 八、管理端桌台二维码
 
 管理端首页的每个桌台卡片提供“二维码”按钮。
 
@@ -170,7 +236,22 @@ pages/table/table?tableId=1
 
 正式上线如需微信可识别的小程序码，需要接入微信官方小程序码接口，由后端调用微信接口生成图片。
 
-## 七、订单找回逻辑
+生产环境推荐改为小程序码：
+
+```text
+page: pages/table/table
+scene: tableId=1
+```
+
+或使用短参数：
+
+```text
+scene: t=1
+```
+
+小程序进入后解析 `options.scene`，自动绑定桌台并进入点餐流程。
+
+## 九、订单找回逻辑
 
 小程序进入桌台后，会调用：
 
@@ -193,7 +274,7 @@ PAID
 - 已支付但未完成订单可继续查看制作状态和催单。
 - 已完成或已取消订单不会作为当前订单找回。
 
-## 八、呼叫服务员
+## 十、呼叫服务员
 
 小程序点餐页提供“呼叫服务员”按钮。
 
@@ -217,7 +298,7 @@ waiter_call
 source restaurant-backend/src/main/resources/sql/migration-add-waiter-call.sql;
 ```
 
-## 九、图片显示
+## 十一、图片显示
 
 菜品图片上传后保存到：
 
@@ -234,18 +315,25 @@ restaurant-backend/uploads/dishes/
 小程序中会将该路径拼接为：
 
 ```text
-http://localhost:8080/uploads/dishes/xxxxxxxx.png
+http://电脑IP:8080/uploads/dishes/xxxxxxxx.png
 ```
 
 如果图片不显示，请检查：
 
 - 后端是否已重启。
-- `GET /uploads/**` 是否已在 Spring Security 中放行。
+- `/uploads/**` 是否已在 Spring Security 中放行。
 - 微信开发者工具是否关闭合法域名校验。
 - 真机测试时 `API_BASE_URL` 是否改为局域网 IP 或 HTTPS 域名。
 
-## 十、剩余计划
+当前菜单页已增加图片失败兜底逻辑：
+
+- `<image>` 加载失败时打印失败 URL。
+- 尝试使用 `wx.downloadFile` 下载为临时文件再显示。
+
+如果手机浏览器能打开图片，但小程序仍不显示，优先改用 HTTPS 合法域名。
+
+## 十二、剩余计划
 
 - 接入真实微信支付：`wx.requestPayment()` + 后端支付签名和回调。
 - 管理端正式小程序码生成：后端调用微信小程序码接口。
-- 真机测试：局域网 IP、HTTPS 域名、合法域名配置。
+- 将本地局域网调试方案整理为一键脚本或稳定部署方案。

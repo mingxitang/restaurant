@@ -2,6 +2,115 @@
 
 本文档记录最近一轮围绕微信小程序顾客端、扫码点单、服务呼叫、二维码和图片显示的改动，方便后续维护时快速理解上下文。
 
+## 2026-06-05
+
+### 一、局域网真机调试排障
+
+确认小程序真机调试不能使用：
+
+```text
+http://localhost:8080
+```
+
+原因是 `localhost` 在手机上指向手机自身，不是开发电脑。真机调试应使用电脑局域网 IP，例如：
+
+```js
+var API_BASE_URL = 'http://192.168.0.101:8080'
+```
+
+本轮排障确认的判断顺序：
+
+1. 电脑浏览器访问 `http://电脑IP:8080/api/tables`。
+2. 手机浏览器访问 `http://电脑IP:8080/api/tables`。
+3. 微信真机调试访问小程序。
+
+如果第 2 步失败，优先排查网络和防火墙，不改小程序业务代码。
+
+### 二、WSL 后端端口暴露
+
+确认后端运行在 WSL 中时，Spring Boot 日志停在：
+
+```text
+Started RestaurantApplication
+```
+
+是正常现象，表示后端正在等待请求。
+
+本轮确认过的 WSL 排障点：
+
+- WSL 内部 `*:8080` 由 Java 进程监听。
+- Windows `localhost:8080` 能访问后端时，说明 WSL 到 Windows localhost 转发正常。
+- 手机访问电脑 IP 超时时，通常是 Windows 防火墙、`portproxy` 或网络隔离问题。
+- `netsh interface portproxy show all` 可确认端口转发是否存在。
+
+当前可用的转发形态：
+
+```text
+0.0.0.0:8080 -> WSL_IP:8080
+```
+
+### 三、Windows 防火墙
+
+确认过的现象：
+
+- 电脑自己访问 `http://电脑IP:8080/api/tables` 成功。
+- 手机访问同一地址超时。
+- Windows 网络配置为 Public 且入站策略为 `BlockInbound`。
+- 未配置 8080 入站放行规则时，手机真机请求会出现：
+
+```text
+request:fail -118:net::ERR_CONNECTION_TIMED_OUT
+```
+
+解决方式是在管理员 PowerShell 放行 8080：
+
+```powershell
+New-NetFirewallRule -DisplayName "Restaurant Backend 8080" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -Profile Any
+```
+
+### 四、小程序图片显示
+
+确认菜品图片接口返回路径类似：
+
+```text
+/uploads/dishes/31e80993-c767-48ae-8164-d9366dcc1fe8.png
+```
+
+小程序端会拼接为：
+
+```text
+http://192.168.0.101:8080/uploads/dishes/31e80993-c767-48ae-8164-d9366dcc1fe8.png
+```
+
+本轮修复：
+
+- 后端将 `/uploads/**` 改为公开放行，不再只限定 `GET /uploads/**`。
+- 小程序菜单页 `<image>` 增加 `binderror` 日志。
+- 图片加载失败时，尝试使用 `wx.downloadFile` 下载为临时文件再显示。
+
+如果手机浏览器能打开图片，但小程序真机仍不显示，优先切换 HTTPS 合法域名。
+
+### 五、HTTPS 合法域名与生产小程序码规划
+
+当前结论：
+
+- 局域网 IP 适合本地开发。
+- HTTPS 合法域名适合稳定真机联调和正式发布。
+- 生产环境桌台入口应接入微信官方小程序码，每个桌台生成一个小程序码。
+
+推荐生产扫码参数：
+
+```text
+page: pages/table/table
+scene: tableId=1
+```
+
+后续待做：
+
+- 准备 HTTPS 后端域名。
+- 在微信公众平台配置 request、uploadFile、downloadFile 合法域名。
+- 管理端二维码从普通路径二维码升级为官方小程序码。
+
 ## 2026-05-25
 
 ### 一、微信小程序顾客端
@@ -100,7 +209,7 @@ restaurant-backend/src/main/resources/sql/migration-add-user-wx-openid.sql
 - 后端放行：
 
 ```text
-GET /uploads/**
+/uploads/**
 ```
 
 - 解决上传图片存在但页面显示失败、图片请求 403 的问题。
@@ -188,5 +297,4 @@ mysql -uroot -p1234 restaurant_db < restaurant-backend/src/main/resources/sql/mi
 - 小程序真机测试时，`API_BASE_URL` 不能继续使用 `localhost`，需要改为局域网 IP 或 HTTPS 域名。
 - 正式上线小程序必须配置微信合法域名。
 - 管理端当前二维码内容是小程序页面路径，适合开发者工具和课程设计演示；正式可扫的小程序码还需要接入微信官方小程序码接口。
-- 真实微信登录和真实微信支付尚未接入。
 - 真实微信支付尚未接入。

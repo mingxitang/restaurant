@@ -1,0 +1,60 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: restaurant-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: restaurant_db
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./restaurant-backend/src/main/resources/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./restaurant-backend/src/main/resources/sql/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p1234 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  backend:
+    build:
+      context: ./restaurant-backend
+    container_name: restaurant-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/restaurant_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      JWT_SECRET: restaurant-course-design-secret-key-change-me-please-2026
+      WECHAT_APP_ID: ""
+      WECHAT_APP_SECRET: ""
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend-uploads:/app/uploads
+
+  admin:
+    build:
+      context: ./restaurant-admin
+    container_name: restaurant-admin
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  customer:
+    build:
+      context: ./restaurant-customer
+    container_name: restaurant-customer
+    depends_on:
+      - backend
+    ports:
+      - "5174:80"
+
+volumes:
+  mysql-data:
+  backend-uploads:

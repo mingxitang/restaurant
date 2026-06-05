@@ -4,9 +4,9 @@ server:
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/restaurant_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 1234
+    url: "${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/restaurant_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}"
+    username: "${SPRING_DATASOURCE_USERNAME:root}"
+    password: "${SPRING_DATASOURCE_PASSWORD:1234}"
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
@@ -23,7 +23,7 @@ mybatis:
     map-underscore-to-camel-case: true
 
 jwt:
-  secret: "restaurant-course-design-secret-key-change-me-please-2026"
+  secret: "${JWT_SECRET:restaurant-course-design-secret-key-change-me-please-2026}"
   expiration-minutes: 1440
 
 app:

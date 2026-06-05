@@ -31,6 +31,17 @@ function enrichDishCartCount(dishes, cart) {
   return dishes
 }
 
+function updateDishImage(dishes, dishId, updates) {
+  var next = dishes.slice()
+  for (var i = 0; i < next.length; i += 1) {
+    if (String(next[i].dishId) === String(dishId)) {
+      next[i] = Object.assign({}, next[i], updates)
+      break
+    }
+  }
+  return next
+}
+
 Page({
   data: {
     table: null,
@@ -91,6 +102,8 @@ Page({
           dishes[i].categoryIdText = String(dishes[i].categoryId)
           dishes[i].displayPrice = money(dishes[i].price)
           dishes[i].imageUrl = normalizeImage(dishes[i].image)
+          dishes[i].displayImageUrl = dishes[i].imageUrl
+          dishes[i].imageLoadTried = false
           dishes[i].initial = dishes[i].dishName ? dishes[i].dishName.slice(0, 1) : '菜'
           dishes[i].canAdd = Boolean(dishes[i].available && dishes[i].stock > 0)
           dishes[i].disabledClass = dishes[i].canAdd ? '' : 'disabled'
@@ -154,6 +167,48 @@ Page({
 
     this.setData({
       filteredDishes: filtered,
+    })
+  },
+
+  onDishImageError: function (event) {
+    var dishId = event.currentTarget.dataset.id
+    var dishes = this.data.dishes
+    var dish = null
+
+    for (var i = 0; i < dishes.length; i += 1) {
+      if (String(dishes[i].dishId) === String(dishId)) {
+        dish = dishes[i]
+        break
+      }
+    }
+
+    if (!dish || !dish.imageUrl || dish.imageLoadTried) {
+      return
+    }
+
+    console.warn('菜品图片加载失败，尝试下载为临时文件', dish.imageUrl, event.detail)
+    this.setData({
+      dishes: updateDishImage(dishes, dishId, { imageLoadTried: true }),
+    })
+    this.applyFilter()
+
+    wx.downloadFile({
+      url: dish.imageUrl,
+      success: function (res) {
+        if (res.statusCode !== 200 || !res.tempFilePath) {
+          console.warn('菜品图片下载失败', dish.imageUrl, res)
+          return
+        }
+        this.setData({
+          dishes: updateDishImage(this.data.dishes, dishId, {
+            displayImageUrl: res.tempFilePath,
+          }),
+        })
+        this.applyFilter()
+      }.bind(this),
+      fail: function (error) {
+        console.warn('菜品图片下载请求失败', dish.imageUrl, error)
+      },
     })
   },
 

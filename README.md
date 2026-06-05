@@ -13,6 +13,10 @@ restaurant
 ├─ restaurant-customer   顾客端 Web 版：扫码点餐、查看订单、支付评价
 ├─ restaurant-miniprogram 顾客端微信小程序版
 ├─ docs                  专项说明文档
+│  ├─ DOCKER_TROUBLESHOOTING.md Docker 部署与登录问题排查
+│  ├─ WECHAT_MINIPROGRAM.md     微信小程序联调说明
+│  ├─ REDIS.md                  Redis 可选增强说明
+│  └─ CHANGELOG.md              近期变更记录
 ├─ ROADMAP.md            后续完善路线
 └─ 项目问题总结与知识点.md
 ```
@@ -133,12 +137,12 @@ restaurant-backend/src/main/resources/application.yml
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/restaurant_db
-    username: root
-    password: 1234
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/restaurant_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:1234}
 ```
 
-如果你的 MySQL 密码不是 `1234`，请把 `spring.datasource.password` 改成自己的密码。
+如果你的 MySQL 密码不是 `1234`，可以修改 `application.yml`，也可以通过环境变量覆盖。
 
 ## 五、默认账号
 
@@ -150,6 +154,57 @@ spring:
 | 顾客 | 13800000003 | 123456 | 顾客端点餐、支付、评价 |
 
 ## 六、启动项目
+
+### 0. Docker Compose 一键启动（推荐）
+
+项目已提供 Docker 配置，可一次启动 MySQL、后端、管理端和顾客端 Web。
+
+在项目根目录运行：
+
+```bash
+docker compose up -d --build
+```
+
+启动后访问：
+
+```text
+管理端：http://localhost:5173
+顾客端：http://localhost:5174
+后端：http://localhost:8080
+```
+
+查看容器状态：
+
+```bash
+docker compose ps
+```
+
+查看日志：
+
+```bash
+docker compose logs -f backend
+docker compose logs -f admin
+docker compose logs -f mysql
+```
+
+停止容器：
+
+```bash
+docker compose down
+```
+
+当前 Docker 配置中，MySQL 只在 Docker 内部网络暴露，后端通过 `mysql:3306` 访问数据库；宿主机不映射 MySQL 端口，避免和本机 MySQL 或 Windows 保留端口冲突。
+
+如果需要完全重建数据库：
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+注意：`down -v` 会删除数据库卷，现有数据会丢失。
+
+Docker 部署和登录排障记录见：[docs/DOCKER_TROUBLESHOOTING.md](docs/DOCKER_TROUBLESHOOTING.md)
 
 ### 1. 启动后端
 
@@ -294,7 +349,7 @@ restaurant-backend/uploads/dishes/
 后端安全配置已放行：
 
 ```text
-GET /uploads/**
+/uploads/**
 ```
 
 如果图片上传成功但页面不显示，请检查：
@@ -305,7 +360,31 @@ GET /uploads/**
 - 浏览器开发者工具 Network 中图片请求是否为 403 或 404。
 - 如果是 403，请确认后端已重启，使 `/uploads/**` 放行配置生效。
 
-## 九、角色权限说明
+## 九、微信小程序真机联调说明
+
+小程序真机调试时，`localhost` 指向手机自身，不是开发电脑。真机应使用电脑局域网 IP 或 HTTPS 域名：
+
+```js
+var API_BASE_URL = 'http://192.168.0.101:8080'
+```
+
+局域网 IP 调试需要同时满足：
+
+- 手机和电脑处于同一个可互访网络。
+- 手机浏览器可以打开 `http://电脑IP:8080/api/tables`。
+- Windows 防火墙已放行 `8080` 入站。
+- 如果后端运行在 WSL 中，Windows 已配置 `portproxy` 将 `电脑IP:8080` 转发到 WSL 后端。
+- 微信开发者工具本地设置中已勾选“不校验合法域名、web-view、TLS 版本以及 HTTPS 证书”。
+
+如果接口能访问但小程序图片不显示，请用手机浏览器打开图片地址确认：
+
+```text
+http://电脑IP:8080/uploads/dishes/图片名.png
+```
+
+浏览器能打开但小程序仍不显示时，优先考虑切换到 HTTPS 合法域名；正式上线必须使用 HTTPS 域名，并在微信公众平台配置 request、uploadFile、downloadFile 合法域名。
+
+## 十、角色权限说明
 
 | 角色 | 可访问模块 | 主要限制 |
 | --- | --- | --- |
@@ -321,7 +400,7 @@ GET /uploads/**
 
 前端权限只是为了改善体验，真正的安全控制以后端权限为准。
 
-## 十、Redis（可选）
+## 十一、Redis（可选）
 
 Redis 是一个**可选的增强组件**，默认不启用，Windows 上无需安装。
 
@@ -355,7 +434,24 @@ redis-cli ping  # 应返回 PONG
 - **JWT 登出接口** `POST /api/auth/logout`：登录用户调用后 token 立即失效
 - **Redis 缓存**：可用 `@Cacheable` 缓存菜品、分类等查询
 
-## 十一、常见问题
+## 十二、常见问题
+
+### 0. Docker 启动或登录异常
+
+Docker 部署后如果遇到端口绑定失败、登录后又回到登录页、首页接口 401/403/500 等问题，先看：
+
+```text
+docs/DOCKER_TROUBLESHOOTING.md
+```
+
+重点排查：
+
+- `docker compose ps` 中容器是否都为 `Up`。
+- `docker compose logs -f backend` 是否有后端异常。
+- 浏览器 Network 中 `/api/auth/login` 和首页初始化接口的状态码。
+- 登录后 `localStorage` 是否保存了 token。
+- 请求头是否带有 `Authorization: Bearer xxx`。
+- 数据库中的角色名是否为正常中文，例如 `管理员`，而不是乱码。
 
 ### 1. 后端启动失败，提示数据库连接失败
 
@@ -405,7 +501,7 @@ source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
 - 开发者工具已关闭合法域名校验，或正式环境已配置 HTTPS 合法域名。
 - 图片请求不是 403；如果是 403，说明后端静态资源放行配置未生效。
 
-## 十二、后续优化方向
+## 十三、后续优化方向
 
 后续计划记录在：
 
@@ -419,13 +515,17 @@ ROADMAP.md
 docs/CHANGELOG.md
 ```
 
+Docker 部署和排障记录在：
+
+```text
+docs/DOCKER_TROUBLESHOOTING.md
+```
+
 已完成前四阶段：稳定性与文档统一、订单业务闭环、顾客端体验增强、管理端运营能力。
 
 后续可以继续完善：
 
-- JWT 密钥改为环境变量。
 - 登录失败次数限制。
 - 核心业务单元测试。
 - 接口测试清单。
-- Docker Compose 一键启动。
 - 更细粒度的角色权限说明。

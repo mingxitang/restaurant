@@ -180,8 +180,32 @@ GET /api/其他首页初始化接口
 - `/api/auth/login` 返回 `200`：账号密码登录本身成功。
 - `/api/auth/login` 返回 `401/403`：登录接口、账号密码、接口放行或权限配置有问题。
 - 登录后首页接口返回 `401/403`：token 没带上、token 无效、角色权限不匹配。
-- 登录后首页接口返回 `500`：后端业务、数据库或 SQL 有错误。
+- 登录后首页接口返回 `500`：后端业务、数据库或 SQL 有错误。前端响应只会返回统一提示，真实异常需要看后端日志。
 - 请求一直 `pending`：后端卡住、数据库连接失败或 Nginx 代理异常。
+
+### 500 错误查看后端日志
+
+后端全局异常处理会把未捕获异常记录到日志，并向前端返回统一文案：
+
+```text
+系统繁忙，请稍后再试
+```
+
+所以排查 `500` 时，以后端日志为准：
+
+```powershell
+docker compose logs -f backend
+```
+
+如果不是 Docker 启动，而是在本机直接运行后端，则查看 IDE 控制台或 `mvn spring-boot:run` 所在终端。项目根目录下的 `backend_output.log` 也可能保留最近一次手动启动后端时的输出。
+
+日志中搜索：
+
+```text
+Unhandled exception
+```
+
+该行后面的异常堆栈就是真实错误上下文，例如 SQL 错误、空指针、权限配置或数据库连接问题。
 
 ### 再看 token
 
@@ -241,6 +265,7 @@ Invoke-WebRequest -Uri 'http://localhost:5173/api/reports/dashboard' -Headers @{
 - Docker 初始化 SQL 中统一显式写 `SET NAMES utf8mb4;`
 - 修改权限、角色、JWT 后，必须验证登录后首页接口
 - 出现登录异常时，先看 Network 和接口响应，不要先被浏览器扩展报错带偏
+- 接口返回 `500` 时，先查 `docker compose logs -f backend` 或本地后端控制台中的 `Unhandled exception`
 - Docker 排查优先使用 `docker compose ps` 和 `docker compose logs`
 - 修改数据库初始化脚本后，如果要完全重建数据，执行：
 

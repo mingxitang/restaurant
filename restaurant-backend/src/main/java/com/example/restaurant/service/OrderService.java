@@ -144,6 +144,7 @@ public class OrderService {
             throw new BusinessException("只有已支付或已完成的订单可以反结账");
         }
         orderMapper.unpay(orderId);
+        tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED");
     }
 
     @Transactional
@@ -185,6 +186,7 @@ public class OrderService {
                 }
             }
             orderMapper.increaseTotal(targetOrder.getOrderId(), sourceOrder.getTotalAmount());
+            orderMapper.deleteDetails(sourceOrder.getOrderId());
             orderMapper.updateStatus(sourceOrder.getOrderId(), "CANCELLED");
         }
         tableInfoMapper.updateStatus(sourceTableId, "FREE");

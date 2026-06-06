@@ -1,5 +1,6 @@
 package com.example.restaurant.service;
 
+import com.example.restaurant.common.BusinessException;
 import com.example.restaurant.dto.RefundRequest;
 import com.example.restaurant.entity.RefundRecord;
 import com.example.restaurant.mapper.DishMapper;
@@ -37,8 +38,11 @@ public class RefundService {
         record.setRefundAmount(request.getRefundAmount());
         record.setStockAction(request.getStockAction());
         refundMapper.insert(record);
+        int updated = orderMapper.decreaseDetailQuantity(request.getOrderId(), request.getDishId(), request.getQuantity());
+        if (updated == 0) {
+            throw new BusinessException("退款数量超过订单明细数量");
+        }
         orderMapper.deleteRefundedDetail(request.getOrderId(), request.getDishId(), request.getQuantity());
-        orderMapper.decreaseDetailQuantity(request.getOrderId(), request.getDishId(), request.getQuantity());
         if (request.getRefundAmount() != null) {
             orderMapper.decreaseTotal(request.getOrderId(), request.getRefundAmount());
         }

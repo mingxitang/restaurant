@@ -74,14 +74,19 @@
         SET quantity = quantity - #{quantity}
         WHERE order_id = #{orderId}
           AND dish_id = #{dishId}
-          AND quantity &gt; #{quantity}
+          AND quantity &gt;= #{quantity}
     </update>
 
     <delete id="deleteRefundedDetail">
         DELETE FROM order_detail
         WHERE order_id = #{orderId}
           AND dish_id = #{dishId}
-          AND quantity &lt;= #{quantity}
+          AND quantity = 0
+    </delete>
+
+    <delete id="deleteDetails">
+        DELETE FROM order_detail
+        WHERE order_id = #{orderId}
     </delete>
 
     <update id="decreaseTotal">

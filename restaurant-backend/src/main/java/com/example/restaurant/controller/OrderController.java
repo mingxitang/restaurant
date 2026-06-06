@@ -64,6 +64,7 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('管理员','服务员')")
     public ApiResponse<Void> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         orderService.updateStatus(id, body.get("status"));
         return ApiResponse.ok();

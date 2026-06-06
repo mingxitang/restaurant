@@ -1,6 +1,91 @@
 # 近期变更记录
 
-本文档记录最近一轮围绕微信小程序顾客端、扫码点单、服务呼叫、二维码和图片显示的改动，方便后续维护时快速理解上下文。
+本文档记录项目近期重要改动，方便后续维护时快速理解上下文。
+
+## 2026-06-06
+
+### 一、Code Review 第一轮修复
+
+根据 `项目CodeReview报告.md` 中“更新后的修复优先级”，本轮完成第一轮必须修的问题，范围集中在后端订单、退款、权限和异常处理。
+
+本轮修复的问题：
+
+| 问题 | 原风险 | 本轮处理 |
+| --- | --- | --- |
+| 全额退款失效 | 明细数量等于退款数量时，`quantity > #{quantity}` 导致 SQL 不执行，退最后一份菜失败 | `decreaseDetailQuantity` 改为 `quantity >= #{quantity}`，退款流程改为先扣减、再删除数量为 0 的明细 |
+| `transferTable` 合并订单后产生孤儿明细 | 源订单改为 `CANCELLED` 后，源订单 `order_detail` 仍留在库里，可能污染厨房队列和统计 | 新增 `OrderMapper.deleteDetails(orderId)`，合并到目标订单后删除源订单明细，再取消源订单 |
+| `OrderController.updateStatus` 缺少权限 | 任何已登录角色都可能直接改订单状态 | 增加 `@PreAuthorize("hasAnyRole('管理员','服务员')")` |
+| 500 错误泄露内部信息 | SQL 错误、异常消息可能直接返回前端 | `GlobalExceptionHandler` 改为日志记录真实异常，前端统一返回 `系统繁忙，请稍后再试` |
+| `unpay()` 不恢复桌台状态 | 支付后桌台为 `FREE`，反结账退回 `PENDING` 时桌台仍空闲，可能被新顾客占用 | `unpay()` 成功后同步桌台状态为 `OCCUPIED` |
+
+### 二、关键实现上下文
+
+退款流程当前语义：
+
+```text
+插入 refund_record
+扣减 order_detail.quantity
+如果扣减失败，抛出 BusinessException("退款数量超过订单明细数量")
+删除 quantity = 0 的 order_detail
+扣减订单 total_amount
+按 stockAction 决定是否恢复库存
+```
+
+维护时需要注意：
+
+- `deleteRefundedDetail` 现在只清理已经被扣到 `0` 的明细，不再用退款数量判断是否删除。
+- `decreaseDetailQuantity` 返回 `0` 表示没有合法明细被扣减，常见原因是超退、订单号/菜品号错误或明细不存在。
+- `transferTable` 在目标桌已有订单时会合并明细；合并完成后源订单明细必须删除，避免取消订单残留菜品。
+- `unpay()` 只允许 `PAID` 或 `COMPLETED` 订单反结账，反结账后订单回到 `PENDING`，桌台同步回 `OCCUPIED`。
+- 500 真实异常不看前端响应体，排查时看后端日志并搜索 `Unhandled exception`。
+
+### 三、本轮涉及文件
+
+后端代码：
+
+```text
+restaurant-backend/src/main/java/com/example/restaurant/controller/OrderController.java
+restaurant-backend/src/main/java/com/example/restaurant/common/GlobalExceptionHandler.java
+restaurant-backend/src/main/java/com/example/restaurant/service/RefundService.java
+restaurant-backend/src/main/java/com/example/restaurant/service/OrderService.java
+restaurant-backend/src/main/java/com/example/restaurant/mapper/OrderMapper.java
+restaurant-backend/src/main/resources/mapper/OrderMapper.xml
+```
+
+新增测试：
+
+```text
+restaurant-backend/src/test/java/com/example/restaurant/common/GlobalExceptionHandlerTest.java
+restaurant-backend/src/test/java/com/example/restaurant/service/OrderServiceTest.java
+restaurant-backend/src/test/java/com/example/restaurant/service/RefundServiceTest.java
+restaurant-backend/src/test/resources/logback-test.xml
+```
+
+文档补充：
+
+```text
+README.md
+docs/DOCKER_TROUBLESHOOTING.md
+docs/CHANGELOG.md
+项目CodeReview报告.md
+```
+
+### 四、验证记录
+
+本轮执行并通过：
+
+```bash
+cd restaurant-backend
+mvn -q test
+```
+
+当前测试覆盖重点：
+
+- 500 异常返回统一文案，不泄露内部错误。
+- 退款时先扣减明细，再删除数量为 0 的明细。
+- 退款数量超过可退明细时抛出业务异常，且不扣金额、不恢复库存。
+- 转桌并桌时，源订单明细删除发生在源订单取消前。
+- 反结账后桌台状态恢复为 `OCCUPIED`。
 
 ## 2026-06-05
 

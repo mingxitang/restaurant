@@ -470,6 +470,20 @@ docs/DOCKER_TROUBLESHOOTING.md
 - 浏览器控制台是否有 401、403、404、500 错误。
 - 登录是否过期，必要时重新登录。
 
+如果接口返回 `500`，前端只会显示统一提示：
+
+```text
+系统繁忙，请稍后再试
+```
+
+真实异常不会再暴露给前端，需要到后端日志中查看。常用入口：
+
+- 本地直接运行后端：查看 IDE 控制台或 `mvn spring-boot:run` 所在终端。
+- 当前项目根目录日志：查看 `backend_output.log`。
+- Docker 部署：执行 `docker compose logs -f backend`。
+
+日志中搜索 `Unhandled exception`，后面会跟完整异常堆栈，通常可以看到 SQL、业务代码或依赖调用的真实错误。
+
 ### 3. 催单时报 `Unknown column 'reminder_count'`
 
 说明旧数据库缺少催单字段。请执行：

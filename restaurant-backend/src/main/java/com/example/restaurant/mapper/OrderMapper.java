@@ -32,6 +32,8 @@ public interface OrderMapper {
 
     int deleteRefundedDetail(@Param("orderId") Long orderId, @Param("dishId") Long dishId, @Param("quantity") Integer quantity);
 
+    int deleteDetails(@Param("orderId") Long orderId);
+
     int decreaseTotal(@Param("orderId") Long orderId, @Param("amount") BigDecimal amount);
 
     int updateStatus(@Param("orderId") Long orderId, @Param("status") String status);

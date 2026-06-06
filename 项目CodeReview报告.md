@@ -368,3 +368,354 @@ url: jdbc:mysql://localhost:3306/restaurant_db?useUnicode=true&characterEncoding
   ✅ Swagger
   ✅ Docker Compose
 ```
+
+---
+
+## 🔄 第二轮审查补充（2026-06-06）
+
+二次深入审查了所有 Service 层完整逻辑、SQL Mapper、迁移脚本、小程序端代码、前端状态管理。以下是新发现的问题：
+
+---
+
+### 🔴 新发现：严重问题
+
+#### 20. transferTable 合并订单后产生孤儿记录
+
+```java
+// OrderService.transferTable()
+} else {
+    List<OrderDetail> details = orderMapper.findDetails(sourceOrder.getOrderId());
+    for (OrderDetail item : details) {
+        // 把明细逐条插入目标订单...
+        orderMapper.insertDetail(moved);
+    }
+    orderMapper.increaseTotal(targetOrder.getOrderId(), sourceOrder.getTotalAmount());
+    orderMapper.updateStatus(sourceOrder.getOrderId(), "CANCELLED");
+    // ❌ 源订单的 order_detail 行没有删除！
+}
+```
+
+合并到目标桌台后，源订单被标记为 CANCELLED，但它的 `order_detail` 行仍然留在数据库中，成为孤儿记录。这些孤儿数据会被 `kitchenQueue` 视图查出来（因为视图只过滤 `od.status != 'SERVED'`，不检查订单状态），导致厨房大屏出现已取消订单的菜品。
+
+**建议**：在 CANCELLED 之前，删除源订单的所有 `order_detail` 记录。
+
+---
+
+#### 21. 退款逻辑 BUG：无法全额退款
+
+```xml
+<!-- OrderMapper.xml -->
+<update id="decreaseDetailQuantity">
+    UPDATE order_detail
+    SET quantity = quantity - #{quantity}
+    WHERE order_id = #{orderId}
+      AND dish_id = #{dishId}
+      AND quantity > #{quantity}   <!-- ❌ 严格大于！ -->
+</update>
+
+<delete id="deleteRefundedDetail">
+    DELETE FROM order_detail
+    WHERE order_id = #{orderId}
+      AND dish_id = #{dishId}
+      AND quantity = 0              <!-- 只在 quantity=0 时删 -->
+</delete>
+```
+
+`RefundService.create()` 先调 `decreaseDetailQuantity` 再调 `deleteRefundedDetail`：
+
+| 场景 | 明细原数量 | 退款数量 | decreaseDetailQuantity | deleteRefundedDetail | 结果 |
+|------|-----------|---------|----------------------|---------------------|------|
+| 部分退款 | 5 | 2 | ✅ 更新为 3 | ❌ 不删（3≠0） | ✅ 正常 |
+| 全额退款 | 3 | 3 | ❌ 不执行（3>3 为 false） | ❌ 不删（3≠0） | 🔴 **BUG！数量不变** |
+| 退最后1个 | 1 | 1 | ❌ 不执行（1>1 为 false） | ❌ 不删（1≠0） | 🔴 **BUG！** |
+
+**全额退款场景完全失效**，订单明细数量和金额都不会被正确扣减。
+
+**建议**：将条件改为 `quantity >= #{quantity}`，并增加 `quantity = 0` 时删除逻辑。
+
+---
+
+#### 22. unpay() 反结账后桌台状态不同步
+
+```java
+// OrderService.pay() — 支付时把桌台设为 FREE
+tableInfoMapper.updateStatus(order.getTableId(), "FREE");
+
+// OrderService.unpay() — 反结账时... 什么都没做
+orderMapper.unpay(orderId);
+// ❌ 没有把桌台状态改回 OCCUPIED
+```
+
+支付后桌台变 FREE，但如果服务员操作反结账（退回 PENDING），桌台还是 FREE 状态。下一个顾客可能扫码坐到这个桌台上，产生冲突。
+
+**建议**：`unpay()` 中增加 `tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED")`。
+
+---
+
+### 🟠 新发现：中等问题
+
+#### 23. pay() 覆盖所有菜品烹饪状态
+
+```java
+// OrderService.pay()
+for (OrderDetail detail : order.getDetails()) {
+    orderMapper.updateDetailStatus(orderId, detail.getDishId(), "PREPARING");
+}
+```
+
+支付后无条件把所有 detail 的 `status` 设为 PREPARING。但如果厨房已经在准备某道菜（status 已经是 PREPARING 或 READY），这个操作会把它重置回 PREPARING。虽然大概率支付发生在做菜之前，但仍然是一个数据一致性问题。
+
+**建议**：只更新 `status = 'PENDING'` 或 `status IS NULL` 的记录。
+
+---
+
+#### 24. 顾客端登录页面硬编码测试账号
+
+管理端（admin）和顾客端（customer）的登录页都预填了测试账号：
+
+```javascript
+// admin/src/views/LoginView.vue
+const form = reactive({ phone: '13800000000', password: '123456' })
+
+// customer/src/views/LoginView.vue（预期类似）
+
+// miniprogram/pages/login/login.js
+data: { phone: '13800000001', password: '123456' }
+```
+
+三个端都有硬编码的默认值。虽然是方便测试，但容易导致：
+- 演示时忘记改密码
+- 测试账号被误用上线
+
+**建议**：用环境变量或配置文件控制，生产构建时去掉默认值。
+
+---
+
+#### 25. 顾客端 cartTotal 使用浮点计算
+
+```javascript
+// customer/src/store.js
+get cartTotal() {
+    return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+}
+```
+
+JavaScript 的浮点数运算可能导致 `0.1 + 0.2 = 0.30000000000000004` 这种精度问题。虽然后端用 `BigDecimal` 计算了正确金额，但前端显示的合计可能与后端不一致。
+
+**建议**：显示时用 `.toFixed(2)`，或用整数（分）计算。
+
+---
+
+#### 26. 小程序全部使用 var 声明
+
+```javascript
+// miniprogram/pages/menu/menu.js
+var api = require('../../api/index')
+var config = require('../../config/index')
+// ...
+for (var i = 0; i < dishes.length; i += 1) {
+```
+
+整个小程序端没有使用 `let`/`const`，这是 ES5 风格。虽然小程序基础库兼容，但作用域混乱易出 Bug。
+
+**建议**：至少新代码用 `let`/`const`。
+
+---
+
+#### 27. enrichDishCartCount O(n*m) 效率问题
+
+```javascript
+function enrichDishCartCount(dishes, cart) {
+  for (var i = 0; i < dishes.length; i += 1) {
+    var count = 0
+    for (var j = 0; j < cart.length; j += 1) {   // 嵌套循环
+      if (String(cart[j].dishId) === String(dishes[i].dishId)) {
+        count = cart[j].quantity
+        break
+      }
+    }
+    // ...
+  }
+}
+```
+
+**建议**：先用 `cart` 构建一个 `Map<dishId, quantity>`，然后遍历 `dishes` 时 O(1) 查找。
+
+---
+
+#### 28. 数据库迁移脚本 v_kitchen_queue 视图重复创建
+
+- `migration-add-detail-status.sql` 创建了 `v_kitchen_queue`
+- `migration-current-db-fixes.sql` 又用 `CREATE OR REPLACE VIEW` 重新创建了同一个视图
+
+新版本增加了 `reminder_count` 和 `last_reminder_time` 字段，但旧迁移脚本没有被更新。如果按时间顺序执行迁移，视图会被覆盖，虽然最终结果正确，但维护混乱。
+
+**建议**：清理重复的视图定义，保持每个视图只在一个地方定义。
+
+---
+
+### 🟡 新发现：低优先级
+
+#### 29. create() 方法存在并发隐患
+
+```java
+Order order = orderMapper.findActiveByTableId(request.getTableId());
+if (order == null) {
+    order = new Order();  // 新建订单
+    orderMapper.insert(order);
+}
+// 否则追加到已有订单
+```
+
+虽然加了 `@Transactional`，但默认隔离级别下，两个请求同时查到 `null` 会插入两条活跃订单。不过实际场景中同一桌台不太可能同时有两个顾客下单，风险较低。
+
+**建议**：在 `table_id` + `status != 'CANCELLED'` 上加唯一约束，或使用 `SELECT ... FOR UPDATE`。
+
+---
+
+#### 30. cancel() 后库存恢复缺少审计
+
+```java
+for (OrderDetail detail : order.getDetails()) {
+    dishMapper.increaseStock(detail.getDishId(), detail.getQuantity());
+}
+```
+
+取消订单时恢复库存，但没有记录"为什么库存增加了"。如果后续查库存变动历史，无法区分是采购入库还是订单取消。
+
+**建议**：至少留一条 `refund_record`（stockAction=0 表示取消返还）。
+
+---
+
+#### 31. 前端 401 处理直接跳转，用户无感知
+
+```javascript
+// admin/src/api/http.js
+if (error.response?.status === 401 || error.response?.status === 403) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    window.location.href = '/login'   // 直接跳转，用户正在填的表单全丢
+}
+```
+
+Token 过期时，用户正在操作的内容（比如正在编辑菜品、填退款单）会直接丢失。
+
+**建议**：弹出提示"登录已过期，请重新登录"，确认后再跳转。
+
+---
+
+#### 32. 缺少请求防抖/节流
+
+多个按钮（下单、支付、催单）在 loading 期间没有完全防止重复点击。虽然用了 `:disabled`，但网络延迟高时用户可能快速双击。
+
+**建议**：加上防抖（debounce）或在 `submitting` 期间加锁。
+
+---
+
+## 📊 问题汇总表
+
+| 编号 | 类别 | 问题 | 严重度 | 位置 |
+|------|------|------|--------|------|
+| 1 | 测试 | 零测试覆盖 | 🔴 高 | `src/test/` |
+| 2 | 安全 | JWT 密钥硬编码 | 🔴 高 | `application.yml` |
+| 3 | 安全 | 订单状态接口无权限 | 🔴 高 | `OrderController.updateStatus()` |
+| 4 | 安全 | 数据库密码明文 | 🔴 高 | `application.yml` |
+| 5 | 安全 | 500 错误泄露内部信息 | 🔴 高 | `GlobalExceptionHandler` |
+| 6 | 可维护 | DashboardView 37KB | 🟠 中 | `admin/views/DashboardView.vue` |
+| 7 | 健壮 | DTO 缺少校验 | 🟠 中 | 所有 DTO |
+| 8 | 安全 | Token 存 localStorage | 🟠 中 | 前端 `api/http.js` |
+| 9 | 安全 | 顾客接口角色隔离不足 | 🟠 中 | `CustomerController` |
+| 10 | Bug | 退款逻辑冗余+全量退款BUG | 🔴 高 | `RefundService` + `OrderMapper.xml` |
+| 11 | 安全 | 内存黑名单重启丢失 | 🟠 中 | `InMemoryTokenBlacklist` |
+| 12 | 性能 | 列表无分页 | 🟡 低 | 所有 list 接口 |
+| 13 | 文档 | 无 API 文档 | 🟡 低 | 全局 |
+| 14 | 规范 | MenuResponse 未用 Lombok | 🟡 低 | `dto/MenuResponse.java` |
+| 15 | 可维护 | styles.css 无组织 | 🟡 低 | 前端 |
+| 16 | 规范 | callWaiter 用 Map 解析 | 🟡 低 | `CustomerController` |
+| 17 | Bug | reportStartDate 返回 null | 🟡 低 | `OrderService` |
+| 18 | 安全 | CORS 配置过宽 | 🟡 低 | `WebConfig` |
+| 19 | 配置 | 无连接池参数 | 🟡 低 | `application.yml` |
+| 20 | Bug | transferTable 孤儿记录 | 🔴 高 | `OrderService.transferTable()` |
+| 21 | Bug | 全额退款失效 | 🔴 高 | `OrderMapper.decreaseDetailQuantity` |
+| 22 | Bug | unpay 不恢复桌台 | 🟠 中 | `OrderService.unpay()` |
+| 23 | Bug | pay 覆盖烹饪状态 | 🟠 中 | `OrderService.pay()` |
+| 24 | 规范 | 硬编码测试账号 | 🟡 低 | 登录页面 |
+| 25 | Bug | JS 浮点计算精度 | 🟡 低 | `customer/store.js` |
+| 26 | 规范 | 小程序全用 var | 🟡 低 | `miniprogram/` |
+| 27 | 性能 | O(n*m) 嵌套循环 | 🟡 低 | `miniprogram/pages/menu/` |
+| 28 | 维护 | 视图重复创建 | 🟡 低 | 迁移脚本 |
+| 29 | Bug | create 并发隐患 | 🟡 低 | `OrderService.create()` |
+| 30 | 可维护 | 库存变动无审计 | 🟡 低 | `OrderService.cancel()` |
+| 31 | UX | Token 过期直接跳转 | 🟡 低 | 前端拦截器 |
+| 32 | UX | 按钮缺防抖 | 🟡 低 | 前端按钮 |
+
+---
+
+## 🎯 更新后的修复优先级
+
+```
+第一轮（必须修 — 有逻辑Bug）：已完成（2026-06-06）
+  ✅ 已修复全额退款失效（OrderMapper.decreaseDetailQuantity 条件改为 >=）
+  ✅ 已修复 transferTable 孤儿记录（合并后删除源订单 detail）
+  ✅ 已修复 OrderController.updateStatus 缺少权限
+  ✅ 已修复 GlobalExceptionHandler 500 信息泄露
+  ✅ 已修复 unpay 不恢复桌台状态
+
+第二轮（安全加固）：
+  ✅ JWT 密钥环境变量化
+  ✅ 数据库密码环境变量化
+  ✅ DTO 参数校验
+  ✅ 登录限流
+  ✅ 添加核心单元测试
+
+第三轮（质量提升）：
+  ✅ DashboardView 拆分
+  ✅ 分页
+  ✅ pay() 烹饪状态覆盖
+  ✅ 前端浮点精度
+  ✅ CORS 收紧
+  ✅ 防抖/跳转提示
+  ✅ Swagger + Docker
+```
+
+---
+
+## ✅ 第一轮修复执行记录（2026-06-06）
+
+本轮已按“更新后的修复优先级”完成第一轮 5 个必须修问题，并补充轻量单元测试。
+
+| 编号 | 问题 | 修复状态 | 修复摘要 |
+|------|------|----------|----------|
+| 21 / 10 | 全额退款失效、退款明细处理顺序不清晰 | ✅ 已修复 | `decreaseDetailQuantity` 条件改为 `quantity >= #{quantity}`；退款流程改为先扣减，扣减失败抛 `BusinessException`，再删除 `quantity = 0` 的明细 |
+| 20 | `transferTable` 合并订单后产生孤儿明细 | ✅ 已修复 | 新增 `OrderMapper.deleteDetails(orderId)`；源订单明细合并到目标订单后，删除源订单明细，再把源订单改为 `CANCELLED` |
+| 3 | `OrderController.updateStatus` 缺少权限 | ✅ 已修复 | `PUT /api/orders/{id}/status` 增加 `@PreAuthorize("hasAnyRole('管理员','服务员')")` |
+| 5 | 500 错误泄露内部信息 | ✅ 已修复 | `GlobalExceptionHandler` 使用 `log.error("Unhandled exception", ex)` 记录真实异常，前端统一返回 `系统繁忙，请稍后再试` |
+| 22 | `unpay()` 不恢复桌台状态 | ✅ 已修复 | 反结账成功后调用 `tableInfoMapper.updateStatus(order.getTableId(), "OCCUPIED")` |
+
+### 维护上下文
+
+- 500 真实异常以后从后端日志查看，前端响应体不再包含内部错误信息；排查时搜索 `Unhandled exception`。
+- 本地运行后端时查看 IDE 控制台或 `mvn spring-boot:run` 终端；Docker 部署时执行 `docker compose logs -f backend`；根目录 `backend_output.log` 可能保留最近一次手动启动输出。
+- 退款删除明细的条件现在是 `quantity = 0`，不能再改回“按退款数量判断删除”，否则可能出现超退误删或全额退款失败。
+- 并桌/换桌合并订单时，源订单被取消前必须清理源订单明细，避免取消订单残留菜品进入后厨/统计链路。
+- 反结账后订单回到 `PENDING`，桌台必须回到 `OCCUPIED`，否则桌台卡片与订单状态会不一致。
+
+### 测试覆盖
+
+新增测试文件：
+
+```text
+restaurant-backend/src/test/java/com/example/restaurant/common/GlobalExceptionHandlerTest.java
+restaurant-backend/src/test/java/com/example/restaurant/service/OrderServiceTest.java
+restaurant-backend/src/test/java/com/example/restaurant/service/RefundServiceTest.java
+restaurant-backend/src/test/resources/logback-test.xml
+```
+
+验证命令：
+
+```bash
+cd restaurant-backend
+mvn -q test
+```
+
+验证结果：通过。

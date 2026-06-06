@@ -16,8 +16,8 @@
         <text class="service-title">需要帮助？</text>
         <text class="service-desc">呼叫服务员处理加水、餐具、咨询等需求</text>
       </view>
-      <button class="service-button" loading="{{callingWaiter}}" disabled="{{callingWaiter}}" bindtap="onCallWaiter">
-        呼叫服务员
+      <button class="service-button" hover-class="none" disabled="{{callingWaiter}}" bindtap="onCallWaiter">
+        {{callingWaiter ? '呼叫中...' : '呼叫服务员'}}
       </button>
     </view>
   </view>
@@ -138,7 +138,7 @@
         <text class="cart-tip">{{cartOpen ? '点击收起' : '查看未下单菜品'}}</text>
       </view>
     </view>
-    <button class="submit-order" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onSubmitOrder">
+    <button class="submit-order" hover-class="none" disabled="{{submitting}}" bindtap="onSubmitOrder">
       {{submitting ? '下单中...' : '下单'}}
     </button>
   </view>

@@ -87,6 +87,244 @@ mvn -q test
 - 转桌并桌时，源订单明细删除发生在源订单取消前。
 - 反结账后桌台状态恢复为 `OCCUPIED`。
 
+### 五、Code Review 第二轮修复
+
+根据 `项目CodeReview报告.md` 中“第二轮（安全加固）”优先级，本轮完成配置安全、DTO 校验、登录限流和核心测试补强。
+
+本轮修复的问题：
+
+| 问题 | 原风险 | 本轮处理 |
+| --- | --- | --- |
+| JWT 密钥环境变量化 | `application.yml` 带旧默认 secret，泄露代码后可伪造 token | `jwt.secret` 改为 `${JWT_SECRET}`，并在 `JwtProperties` 启动期校验：不能为空、不能等于旧默认值、长度至少 32 字节 |
+| 数据库密码环境变量化 | 默认 `root/1234` 容易被误带到部署环境 | `spring.datasource.password` 改为 `${SPRING_DATASOURCE_PASSWORD}`；Docker Compose 改为要求 `.env`/环境变量显式提供密码 |
+| DTO 参数校验 | 空桌台、空订单明细、负数退款金额、非法评分等请求会进入 Service 后才失败 | 引入 `spring-boot-starter-validation`，给登录、下单、支付、退款、评价、转桌、状态更新、呼叫服务员等请求 DTO 增加校验 |
+| 登录限流 | 登录接口可被暴力尝试账号密码 | 新增 `LoginRateLimiter`，按 `客户端IP + 手机号` 统计失败次数，默认 10 分钟内失败 5 次锁定 10 分钟，成功登录清理计数 |
+| 核心单元测试 | 关键业务修复缺少自动化保护 | 新增 JWT 配置校验、登录限流、DTO 校验测试；保留并运行第一轮订单/退款/异常处理测试 |
+
+### 六、第二轮关键实现上下文
+
+环境变量要求：
+
+```text
+SPRING_DATASOURCE_PASSWORD
+JWT_SECRET
+```
+
+Docker Compose 额外要求：
+
+```text
+MYSQL_ROOT_PASSWORD
+```
+
+本地开发可复制：
+
+```bash
+copy .env.example .env
+```
+
+然后修改 `.env` 中的占位值。`.env` 和 `.env.*` 已加入 `.gitignore`，只有 `.env.example` 允许提交。
+
+登录限流默认配置：
+
+```yaml
+app:
+  security:
+    login-rate-limit:
+      max-failures: 5
+      window-minutes: 10
+      lock-minutes: 10
+```
+
+如果要调整阈值，可通过环境变量覆盖：
+
+```text
+LOGIN_RATE_LIMIT_MAX_FAILURES
+LOGIN_RATE_LIMIT_WINDOW_MINUTES
+LOGIN_RATE_LIMIT_LOCK_MINUTES
+```
+
+校验失败返回：
+
+```text
+HTTP 400
+ApiResponse.code = 400
+message = 第一条参数错误信息
+```
+
+### 七、第二轮涉及文件
+
+配置与依赖：
+
+```text
+.gitignore
+.env.example
+docker-compose.yml
+restaurant-backend/pom.xml
+restaurant-backend/src/main/resources/application.yml
+restaurant-backend/src/main/java/com/example/restaurant/security/JwtProperties.java
+```
+
+校验与限流：
+
+```text
+restaurant-backend/src/main/java/com/example/restaurant/common/GlobalExceptionHandler.java
+restaurant-backend/src/main/java/com/example/restaurant/service/LoginRateLimiter.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/AuthController.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/OrderController.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/CustomerController.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/RefundController.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/ReviewController.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/KitchenController.java
+restaurant-backend/src/main/java/com/example/restaurant/dto/
+```
+
+新增测试：
+
+```text
+restaurant-backend/src/test/java/com/example/restaurant/security/JwtPropertiesTest.java
+restaurant-backend/src/test/java/com/example/restaurant/service/LoginRateLimiterTest.java
+restaurant-backend/src/test/java/com/example/restaurant/dto/RequestValidationTest.java
+```
+
+### 八、第二轮验证记录
+
+本轮执行并通过：
+
+```bash
+cd restaurant-backend
+mvn -q test
+```
+
+当前测试覆盖重点：
+
+- JWT secret 为空、过短、等于旧默认值时启动期校验失败。
+- 登录失败达到阈值后限流，成功登录可清理失败计数。
+- 登录、下单、退款、评价等请求 DTO 的关键字段校验。
+- 第一轮订单/退款/异常处理测试继续通过。
+
+### 九、Code Review 第三轮修复
+
+根据 `项目CodeReview报告.md` 中“第三轮（质量提升）”优先级，本轮完成质量提升项。
+
+本轮修复的问题：
+
+| 问题 | 原风险 | 本轮处理 |
+| --- | --- | --- |
+| `DashboardView` 过大 | 服务呼叫、桌台、订单、退菜等逻辑全部挤在一个组件里 | 先拆出 `WaiterCallPanel.vue`，保留原事件流，降低首页组件体积和职责 |
+| 列表接口缺少分页 | 数据增长后一次性返回全量列表 | 新增 `PageResponse` / `PageUtils`；订单、菜品、用户、桌台、退款、评价、服务呼叫列表支持 `page` / `size`；未传分页参数时仍返回原数组，兼容现有前端 |
+| `pay()` 覆盖烹饪状态 | 支付时可能把 `READY/SERVED` 等状态重置成 `PREPARING` | 新增 `updatePendingDetailStatus`，只更新 `status IS NULL OR status = 'PENDING'` 的明细 |
+| 前端金额浮点精度 | JS 浮点计算可能显示出 `0.30000000000000004` 类问题 | 顾客端和管理端购物车合计改为按“分”累计后除以 100 |
+| CORS 过宽 | `allowedHeaders("*")` + credentials 不利于生产部署 | CORS 请求头收紧为 `Authorization`、`Content-Type`、`X-Requested-With`，保留本地开发来源 |
+| 401/403 直接跳转 | token 失效时表单内容可能直接丢失 | 管理端和顾客端拦截器改为先 `confirm` 提示，再清 token 并跳登录页 |
+| 防重复点击 | 快速双击可能重复下单、退菜、结账、转桌 | 顾客端下单入口加锁；管理端关键异步操作用 `runOnce` 锁保护 |
+| Swagger + Docker | 缺少接口文档入口和 Docker 构建验证 | 引入 `springdoc-openapi`，开放 `/swagger-ui/**` 和 `/v3/api-docs/**`；执行 `docker compose build backend` 验证通过 |
+
+### 十、第三轮关键实现上下文
+
+分页兼容策略：
+
+```text
+不传 page/size：data 仍是原来的数组
+传 page 或 size：data 为 { records, total, page, size, pages }
+```
+
+这样不会打断现有管理端、顾客端和小程序端调用。
+
+Swagger 入口：
+
+```text
+http://localhost:8080/swagger-ui/index.html
+http://localhost:8080/v3/api-docs
+```
+
+支付后的厨房状态推进：
+
+```text
+只更新 order_detail.status 为 NULL 或 PENDING 的明细到 PREPARING
+不再覆盖 PREPARING / READY / SERVED
+```
+
+### 十一、第三轮涉及文件
+
+后端：
+
+```text
+restaurant-backend/src/main/java/com/example/restaurant/common/PageResponse.java
+restaurant-backend/src/main/java/com/example/restaurant/common/PageUtils.java
+restaurant-backend/src/main/java/com/example/restaurant/config/OpenApiConfig.java
+restaurant-backend/src/main/java/com/example/restaurant/config/SecurityConfig.java
+restaurant-backend/src/main/java/com/example/restaurant/config/WebConfig.java
+restaurant-backend/src/main/java/com/example/restaurant/controller/
+restaurant-backend/src/main/java/com/example/restaurant/service/OrderService.java
+restaurant-backend/src/main/java/com/example/restaurant/mapper/OrderMapper.java
+restaurant-backend/src/main/resources/mapper/OrderMapper.xml
+restaurant-backend/pom.xml
+```
+
+前端：
+
+```text
+restaurant-admin/src/components/WaiterCallPanel.vue
+restaurant-admin/src/views/DashboardView.vue
+restaurant-admin/src/api/http.js
+restaurant-customer/src/store.js
+restaurant-customer/src/api/http.js
+restaurant-customer/src/views/MenuView.vue
+```
+
+新增测试：
+
+```text
+restaurant-backend/src/test/java/com/example/restaurant/common/PageUtilsTest.java
+restaurant-backend/src/test/java/com/example/restaurant/service/OrderServiceTest.java
+```
+
+### 十二、第三轮验证记录
+
+本轮执行并通过：
+
+```bash
+cd restaurant-backend
+mvn -q test
+```
+
+```bash
+cd restaurant-admin
+npm run build
+```
+
+```bash
+cd restaurant-customer
+npm run build
+```
+
+```bash
+docker compose build backend
+```
+
+### 十三、当日收尾与运行态修复
+
+今天收尾阶段还处理了以下运行态问题和配置上下文：
+
+| 事项 | 处理 |
+| --- | --- |
+| Docker 后端启动失败 | `LoginRateLimiter` 存在测试用构造器和 Spring 构造器，容器启动时 Spring 未选中带配置注入的构造器。已给生产构造器增加 `@Autowired`，并重新执行 `mvn -q test`。 |
+| Docker Redis | `docker-compose.yml` 增加 Redis 服务，backend 默认通过 `redis:6379` 使用 Redis 黑名单和缓存；`docs/REDIS.md` 已补充 Docker Compose 场景。 |
+| 微信一键登录配置 | backend 从 `.env` / 环境变量读取 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`，小程序端不保存 AppSecret。 |
+| 小程序 request fail 提示 | 曾短暂加入更详细的网络失败提示，后按要求回退为原始 `error.errMsg` / 通用提示。 |
+| 小程序按钮闪烁 | 登录、呼叫服务员、下单按钮去掉原生 loading spinner，菜单页加减菜合并 `setData`，减少闪烁。 |
+
+最终运行态验证：
+
+```bash
+docker compose up -d backend
+```
+
+```text
+GET http://localhost:8080/api/tables?page=1&size=2 -> 200
+GET http://localhost:8080/v3/api-docs -> 200
+```
+
 ## 2026-06-05
 
 ### 一、局域网真机调试排障

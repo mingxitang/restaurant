@@ -1,7 +1,9 @@
 package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
+import com.example.restaurant.dto.KitchenStatusUpdateRequest;
 import com.example.restaurant.service.KitchenService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,8 +27,8 @@ public class KitchenController {
 
     @PutMapping("/{orderId}/{dishId}/status")
     public ApiResponse<Void> updateStatus(@PathVariable Long orderId, @PathVariable Long dishId,
-                                          @RequestBody Map<String, String> body) {
-        kitchenService.updateStatus(orderId, dishId, body.get("status"));
+                                          @Valid @RequestBody KitchenStatusUpdateRequest request) {
+        kitchenService.updateStatus(orderId, dishId, request.getStatus());
         return ApiResponse.ok();
     }
 }

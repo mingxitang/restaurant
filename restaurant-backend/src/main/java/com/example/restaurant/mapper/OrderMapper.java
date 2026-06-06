@@ -56,5 +56,7 @@ public interface OrderMapper {
 
     int updateDetailStatus(@Param("orderId") Long orderId, @Param("dishId") Long dishId, @Param("status") String status);
 
+    int updatePendingDetailStatus(@Param("orderId") Long orderId, @Param("status") String status);
+
     int completePaidOrderIfFullyServed(@Param("orderId") Long orderId);
 }

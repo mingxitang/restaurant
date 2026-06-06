@@ -1,6 +1,7 @@
 package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.TableInfo;
 import com.example.restaurant.service.TableInfoService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,9 +19,13 @@ public class TableInfoController {
         this.tableInfoService = tableInfoService;
     }
 
-    @GetMapping
-    public ApiResponse<List<TableInfo>> list(@RequestParam(required = false) String status) {
-        return ApiResponse.ok(tableInfoService.list(status));
+    @GetMapping
+    public ApiResponse<?> list(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<TableInfo> tables = tableInfoService.list(status);
+        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(tables, page, size) : tables);
     }
 
     @PostMapping

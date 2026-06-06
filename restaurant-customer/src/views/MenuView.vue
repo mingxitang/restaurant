@@ -137,6 +137,7 @@ function goPay() {
 }
 
 async function submitOrder() {
+  if (submitting.value) return
   if (!store.tableId) return router.push('/')
   submitting.value = true
   error.value = ''

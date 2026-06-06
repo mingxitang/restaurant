@@ -109,13 +109,7 @@ public class OrderService {
         orderMapper.pay(orderId, paid, discount, request.getPayMethod(), payNo);
         orderMapper.updateStatus(orderId, "PAID");
         tableInfoMapper.updateStatus(order.getTableId(), "FREE");
-        // Set all order details to PREPARING so they appear in kitchen queue
-        order.setDetails(orderMapper.findDetails(orderId));
-        if (order.getDetails() != null) {
-            for (OrderDetail detail : order.getDetails()) {
-                orderMapper.updateDetailStatus(orderId, detail.getDishId(), "PREPARING");
-            }
-        }
+        orderMapper.updatePendingDetailStatus(orderId, "PREPARING");
     }
 
     @Transactional

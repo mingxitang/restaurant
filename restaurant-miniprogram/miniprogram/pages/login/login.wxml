@@ -30,11 +30,11 @@
         />
       </view>
 
-      <button class="submit" loading="{{loading}}" disabled="{{loading}}" bindtap="onSubmit">
+      <button class="submit" hover-class="none" disabled="{{loading}}" bindtap="onSubmit">
         {{loading ? '登录中...' : '登录'}}
       </button>
 
-      <button class="wechat-submit" loading="{{wxLoading}}" disabled="{{wxLoading || loading}}" bindtap="onWxLogin">
+      <button class="wechat-submit" hover-class="none" disabled="{{wxLoading || loading}}" bindtap="onWxLogin">
         {{wxLoading ? '微信登录中...' : '微信一键登录'}}
       </button>
 

@@ -18,26 +18,12 @@
       <article><span>低库存菜品</span><strong>{{ data.lowStockDishes || 0 }}</strong></article>
     </div>
 
-    <section class="waiter-call-panel" v-if="!isChef">
-      <div class="waiter-call-head">
-        <div>
-          <h3>服务呼叫</h3>
-          <p>顾客通过小程序呼叫服务员后会显示在这里</p>
-        </div>
-        <button class="ghost" @click="loadWaiterCalls">刷新</button>
-      </div>
-      <div v-if="waiterCalls.length" class="waiter-call-list">
-        <article v-for="call in waiterCalls" :key="call.callId" class="waiter-call-item">
-          <div>
-            <strong>{{ call.tableNumber || ('桌台 #' + call.tableId) }}</strong>
-            <span>{{ call.remark || '顾客呼叫服务员' }}</span>
-            <small>{{ call.callTime }}</small>
-          </div>
-          <button @click="completeWaiterCall(call)">已处理</button>
-        </article>
-      </div>
-      <p v-else class="compact-empty">暂无待处理服务呼叫</p>
-    </section>
+    <WaiterCallPanel
+      v-if="!isChef"
+      :calls="waiterCalls"
+      @refresh="loadWaiterCalls"
+      @complete="completeWaiterCall"
+    />
 
     <div class="floor-head">
       <h3>桌台</h3>
@@ -310,6 +296,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import QRCode from 'qrcode'
+import WaiterCallPanel from '../components/WaiterCallPanel.vue'
 import {
   createOrder,
   createRefund,
@@ -388,7 +375,10 @@ const filteredDishes = computed(() => {
     return matchesCategory && matchesKeyword
   })
 })
-const cartTotal = computed(() => cart.value.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0))
+const cartTotal = computed(() => cart.value.reduce((sum, item) => {
+  const cents = Math.round(Number(item.price || 0) * 100)
+  return sum + cents * item.quantity
+}, 0) / 100)
 const activeTotal = computed(() => activeOrders.value.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0))
 const todayOrders = computed(() => {
   const today = new Date().toISOString().slice(0, 10)
@@ -500,6 +490,17 @@ const transferTargetOptions = computed(() => {
     return table.tableId !== activeTable.value.tableId && ['FREE', 'OCCUPIED'].includes(table.status)
   })
 })
+const runningActions = new Set()
+
+async function runOnce(key, action) {
+  if (runningActions.has(key)) return
+  runningActions.add(key)
+  try {
+    await action()
+  } finally {
+    runningActions.delete(key)
+  }
+}
 
 function statusText(status) {
   return {
@@ -565,13 +566,15 @@ async function loadWaiterCalls() {
 }
 
 async function completeWaiterCall(call) {
-  try {
-    await handleWaiterCall(call.callId, { handledBy: user.value.userId })
-    message.value = `${call.tableNumber || '该桌台'} 的服务呼叫已处理。`
-    await loadWaiterCalls()
-  } catch (error) {
-    message.value = error.message || '处理服务呼叫失败'
-  }
+  await runOnce(`waiter-${call.callId}`, async () => {
+    try {
+      await handleWaiterCall(call.callId, { handledBy: user.value.userId })
+      message.value = `${call.tableNumber || '该桌台'} 的服务呼叫已处理。`
+      await loadWaiterCalls()
+    } catch (error) {
+      message.value = error.message || '处理服务呼叫失败'
+    }
+  })
 }
 
 function isPaid(order) {
@@ -658,27 +661,31 @@ function removeCartItem(dishId) {
 }
 
 async function submitOrder() {
-  try {
-    const order = await createOrder({
-      tableId: activeTable.value.tableId,
-      userId: user.value.userId,
-      items: cart.value.map((item) => ({ dishId: item.dishId, quantity: item.quantity, remark: item.remark }))
-    })
-    cart.value = []
-    message.value = `提交成功，订单号：${order.orderId}`
-    await refreshAfterTableMutation()
-  } catch (error) {
-    message.value = error.message || '提交加菜失败'
-  }
+  await runOnce('submit-order', async () => {
+    try {
+      const order = await createOrder({
+        tableId: activeTable.value.tableId,
+        userId: user.value.userId,
+        items: cart.value.map((item) => ({ dishId: item.dishId, quantity: item.quantity, remark: item.remark }))
+      })
+      cart.value = []
+      message.value = `提交成功，订单号：${order.orderId}`
+      await refreshAfterTableMutation()
+    } catch (error) {
+      message.value = error.message || '提交加菜失败'
+    }
+  })
 }
 
 async function refundDetail(detail) {
-  const quantity = Number(detail.refundQuantity || 0)
-  if (!quantity || quantity < 1 || quantity > detail.quantity) {
-    message.value = '请输入有效的退菜份数。'
-    return
-  }
-  await refundGroupedDetail(detail, quantity)
+  await runOnce(`refund-${detail.dishId}`, async () => {
+    const quantity = Number(detail.refundQuantity || 0)
+    if (!quantity || quantity < 1 || quantity > detail.quantity) {
+      message.value = '请输入有效的退菜份数。'
+      return
+    }
+    await refundGroupedDetail(detail, quantity)
+  })
 }
 
 async function refundGroupedDetail(detail, quantity) {
@@ -704,13 +711,15 @@ async function refundGroupedDetail(detail, quantity) {
 const selectedRefundDetails = computed(() => filteredOrderedDetails.value.filter((detail) => detail.selected))
 
 async function refundSelected() {
-  const selected = [...selectedRefundDetails.value]
-  for (const detail of selected) {
-    const quantity = Number(detail.refundQuantity || 0)
-    if (quantity > 0 && quantity <= detail.quantity) {
-      await refundGroupedDetail(detail, quantity)
+  await runOnce('refund-selected', async () => {
+    const selected = [...selectedRefundDetails.value]
+    for (const detail of selected) {
+      const quantity = Number(detail.refundQuantity || 0)
+      if (quantity > 0 && quantity <= detail.quantity) {
+        await refundGroupedDetail(detail, quantity)
+      }
     }
-  }
+  })
 }
 
 function ensureRefundDraft(detail) {
@@ -726,16 +735,18 @@ function updateRefundDraft(detail, field, value) {
 }
 
 async function checkout() {
-  if (activeOrders.value.length === 0) return
-  for (const order of activeOrders.value) {
-    await payOrder(order.orderId, { payMethod: '现金', discountAmount: 0 })
-    await updateOrderStatus(order.orderId, 'COMPLETED')
-  }
-  await updateTableStatus(activeTable.value.tableId, 'FREE')
-  message.value = '结账完成，桌位已释放。'
-  activeTable.value.status = 'FREE'
-  activeOrders.value = []
-  await refreshAfterTableMutation()
+  await runOnce('checkout', async () => {
+    if (activeOrders.value.length === 0) return
+    for (const order of activeOrders.value) {
+      await payOrder(order.orderId, { payMethod: '现金', discountAmount: 0 })
+      await updateOrderStatus(order.orderId, 'COMPLETED')
+    }
+    await updateTableStatus(activeTable.value.tableId, 'FREE')
+    message.value = '结账完成，桌位已释放。'
+    activeTable.value.status = 'FREE'
+    activeOrders.value = []
+    await refreshAfterTableMutation()
+  })
 }
 
 function toggleEditMode() {
@@ -818,17 +829,19 @@ async function closeTableWithoutCheckout() {
 }
 
 async function transferActiveTable() {
-  if (!activeTable.value || !transferTargetId.value) return
-  const target = tables.value.find((table) => table.tableId === transferTargetId.value)
-  try {
-    await transferTable(activeTable.value.tableId, transferTargetId.value)
-    message.value = target?.status === 'OCCUPIED' ? '并桌成功，订单已合并到目标桌。' : '换桌成功，订单已转移到目标桌。'
-    transferTargetId.value = null
-    await refreshAfterTableMutation()
-    closeTableModal()
-  } catch (error) {
-    message.value = error.message || '换桌/并桌失败'
-  }
+  await runOnce('transfer-table', async () => {
+    if (!activeTable.value || !transferTargetId.value) return
+    const target = tables.value.find((table) => table.tableId === transferTargetId.value)
+    try {
+      await transferTable(activeTable.value.tableId, transferTargetId.value)
+      message.value = target?.status === 'OCCUPIED' ? '并桌成功，订单已合并到目标桌。' : '换桌成功，订单已转移到目标桌。'
+      transferTargetId.value = null
+      await refreshAfterTableMutation()
+      closeTableModal()
+    } catch (error) {
+      message.value = error.message || '换桌/并桌失败'
+    }
+  })
 }
 
 async function refreshAfterTableMutation() {
@@ -875,64 +888,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.waiter-call-panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-  margin: 18px 0;
-}
-
-.waiter-call-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
-.waiter-call-head h3 {
-  margin: 0;
-}
-
-.waiter-call-head p {
-  color: #6b7280;
-  margin: 4px 0 0;
-}
-
-.waiter-call-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
-}
-
-.waiter-call-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.waiter-call-item strong,
-.waiter-call-item span,
-.waiter-call-item small {
-  display: block;
-}
-
-.waiter-call-item span {
-  color: #92400e;
-  margin-top: 4px;
-}
-
-.waiter-call-item small {
-  color: #6b7280;
-  margin-top: 4px;
-}
-
 .qr-button {
   align-self: flex-start;
   margin-top: 8px;

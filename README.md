@@ -139,10 +139,22 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/restaurant_db}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:1234}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 ```
 
-如果你的 MySQL 密码不是 `1234`，可以修改 `application.yml`，也可以通过环境变量覆盖。
+数据库密码不再写入 `application.yml`，必须通过环境变量或根目录 `.env` 提供：
+
+```bash
+SPRING_DATASOURCE_PASSWORD=你的数据库密码
+```
+
+JWT 密钥也必须通过环境变量提供，长度至少 32 字节，且不能继续使用旧的 `change-me` 默认值：
+
+```bash
+JWT_SECRET=至少32位的随机字符串
+```
+
+本地开发可复制 `.env.example` 为 `.env` 后修改其中的占位值；`.env` 已加入忽略列表，不应提交到仓库。
 
 ## 五、默认账号
 
@@ -157,7 +169,22 @@ spring:
 
 ### 0. Docker Compose 一键启动（推荐）
 
-项目已提供 Docker 配置，可一次启动 MySQL、后端、管理端和顾客端 Web。
+项目已提供 Docker 配置，可一次启动 MySQL、Redis、后端、管理端和顾客端 Web。
+MyBatis 是后端内部 ORM 框架，随 `restaurant-backend` 容器一起运行，不需要单独容器。
+
+首次启动前，先准备环境变量文件：
+
+```bash
+copy .env.example .env
+```
+
+然后编辑 `.env`，至少设置：
+
+```text
+MYSQL_ROOT_PASSWORD
+SPRING_DATASOURCE_PASSWORD
+JWT_SECRET
+```
 
 在项目根目录运行：
 
@@ -185,6 +212,7 @@ docker compose ps
 docker compose logs -f backend
 docker compose logs -f admin
 docker compose logs -f mysql
+docker compose logs -f redis
 ```
 
 停止容器：
@@ -193,7 +221,7 @@ docker compose logs -f mysql
 docker compose down
 ```
 
-当前 Docker 配置中，MySQL 只在 Docker 内部网络暴露，后端通过 `mysql:3306` 访问数据库；宿主机不映射 MySQL 端口，避免和本机 MySQL 或 Windows 保留端口冲突。
+当前 Docker 配置中，MySQL 和 Redis 只在 Docker 内部网络暴露。后端通过 `mysql:3306` 访问数据库，通过 `redis:6379` 访问 Redis；宿主机不映射 MySQL / Redis 端口，避免和本机服务或 Windows 保留端口冲突。
 
 如果需要完全重建数据库：
 
@@ -219,6 +247,20 @@ mvn spring-boot:run
 
 ```text
 http://localhost:8080
+```
+
+直接运行后端前，需要先设置：
+
+```bash
+set SPRING_DATASOURCE_PASSWORD=你的数据库密码
+set JWT_SECRET=至少32位的随机字符串
+```
+
+PowerShell 可使用：
+
+```powershell
+$env:SPRING_DATASOURCE_PASSWORD="你的数据库密码"
+$env:JWT_SECRET="至少32位的随机字符串"
 ```
 
 ### 2. 启动管理端
@@ -315,6 +357,18 @@ cd restaurant-backend
 mvn -q -DskipTests package
 ```
 
+后端接口文档：
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
+OpenAPI JSON：
+
+```text
+http://localhost:8080/v3/api-docs
+```
+
 管理端打包：
 
 ```bash
@@ -402,29 +456,30 @@ http://电脑IP:8080/uploads/dishes/图片名.png
 
 ## 十一、Redis（可选）
 
-Redis 是一个**可选的增强组件**，默认不启用，Windows 上无需安装。
+Redis 是一个**可选的增强组件**。Docker Compose 部署时默认启用 Redis；本机 Windows 开发时默认不启用，仍然可以开箱即用。
 
 ### 默认行为
 
-- Windows 开发环境：使用内存级 JWT 黑名单和缓存，开箱即用。
-- 无需安装 Redis，项目正常启动和运行。
+- Windows 本机开发环境：`APP_REDIS_ENABLED=false`，使用内存级 JWT 黑名单和缓存。
+- Docker Compose 环境：`APP_REDIS_ENABLED=true`，使用 `restaurant-redis` 容器提供 Redis 黑名单和 Redis CacheManager。
 
-### 启用 Redis（WSL / Linux）
+### 启用 Redis（Docker / WSL / Linux）
 
-如果你在 WSL 或 Linux 环境下运行，可以启用 Redis 以获得持久化的 JWT 黑名单和分布式缓存能力。
+Docker Compose 已内置 Redis 服务。手动运行后端时，也可以通过环境变量启用 Redis，以获得持久化的 JWT 黑名单和分布式缓存能力。
 
-**1. 确认 Redis 已启动：**
+**Docker Compose 中确认 Redis：**
 
 ```bash
-redis-cli ping  # 应返回 PONG
+docker compose ps redis
+docker compose logs -f redis
 ```
 
-**2. 修改 `application.yml` 三处：**
+**手动开发时启用 Redis：**
 
-```yaml
-# ① 删除 Redis 自动配置的排除项
-# ② app.redis.enabled 改为 true
-# ③ 取消 spring.data.redis 注释
+```bash
+export APP_REDIS_ENABLED=true
+export SPRING_DATA_REDIS_HOST=localhost
+export SPRING_DATA_REDIS_PORT=6379
 ```
 
 详细步骤见：[docs/REDIS.md](docs/REDIS.md)
@@ -539,7 +594,5 @@ docs/DOCKER_TROUBLESHOOTING.md
 
 后续可以继续完善：
 
-- 登录失败次数限制。
-- 核心业务单元测试。
 - 接口测试清单。
 - 更细粒度的角色权限说明。

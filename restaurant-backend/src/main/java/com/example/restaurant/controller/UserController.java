@@ -1,6 +1,7 @@
 package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.User;
 import com.example.restaurant.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,8 +20,12 @@ public class UserController {
     }
 
     @GetMapping
-    public ApiResponse<List<User>> list(@RequestParam(required = false) String keyword) {
-        return ApiResponse.ok(userService.list(keyword));
+    public ApiResponse<?> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<User> users = userService.list(keyword);
+        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(users, page, size) : users);
     }
 
     @PostMapping

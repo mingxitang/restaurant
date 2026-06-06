@@ -1,10 +1,20 @@
 package com.example.restaurant.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
 
 public class CustomerOrderRequest {
+    @NotNull(message = "桌台不能为空")
     private Integer tableId;
+
+    @NotNull(message = "用户不能为空")
     private Long userId;
+
+    @Valid
+    @NotEmpty(message = "订单明细不能为空")
     private List<OrderCreateRequest.OrderItemRequest> items;
 
     public Integer getTableId() { return tableId; }

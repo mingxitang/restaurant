@@ -7,9 +7,10 @@ Redis 是可选的增强组件，**不是必须依赖**。通过一个开关 `ap
 | 环境 | `app.redis.enabled` | 黑名单实现 | 缓存实现 |
 |------|---------------------|-----------|---------|
 | Windows（默认） | `false` | `InMemoryTokenBlacklist`（ConcurrentHashMap） | Spring 默认 ConcurrentMapCache |
+| Docker Compose | `true` | `RedisTokenBlacklist`（Redis） | RedisCacheManager |
 | WSL / Linux | `true` | `RedisTokenBlacklist`（Redis） | RedisCacheManager |
 
-这样保证项目在 Windows 上开箱即用，在 WSL/Linux 上获得 Redis 的全部优势。
+这样保证项目在 Windows 上开箱即用，在 Docker / WSL / Linux 上获得 Redis 的全部优势。
 
 ## 架构
 
@@ -47,7 +48,44 @@ RedisConfig                   ← app.redis.enabled = true 时创建 CacheManage
 - 不支持多实例部署共享黑名单
 - 缓存为 JVM 内存级别
 
-## WSL / Linux 启用 Redis
+## Docker Compose 启用 Redis
+
+Docker Compose 已包含 Redis 服务：
+
+```yaml
+redis:
+  image: redis:7-alpine
+  container_name: restaurant-redis
+```
+
+后端通过 Compose 服务名访问 Redis：
+
+```text
+redis:6379
+```
+
+对应环境变量：
+
+```yaml
+APP_REDIS_ENABLED: true
+SPRING_DATA_REDIS_HOST: redis
+SPRING_DATA_REDIS_PORT: 6379
+```
+
+启动：
+
+```bash
+docker compose up -d --build
+```
+
+检查：
+
+```bash
+docker compose ps redis
+docker compose logs -f redis
+```
+
+## WSL / Linux 手动启用 Redis
 
 ### 1. 确认 Redis 已启动
 
@@ -56,33 +94,14 @@ redis-cli ping
 # 应返回 PONG
 ```
 
-### 2. 修改 `application.yml`
+### 2. 设置环境变量
 
-**三步改动**：
+不需要再修改 `application.yml`，直接设置：
 
-```yaml
-# ① 删除 Redis 自动配置的排除项（删除下面 3 行）
-#  autoconfigure:
-#    exclude:
-#      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-
-# ② 启用 Redis
-app:
-  redis:
-    enabled: true   # 改为 true
-
-# ③ 取消 Redis 连接配置的注释
-spring:
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      timeout: 3000ms
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 2
+```bash
+export APP_REDIS_ENABLED=true
+export SPRING_DATA_REDIS_HOST=localhost
+export SPRING_DATA_REDIS_PORT=6379
 ```
 
 ### 3. 重启后端

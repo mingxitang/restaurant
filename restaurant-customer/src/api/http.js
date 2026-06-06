@@ -23,9 +23,14 @@ http.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      const message = error.response.status === 401
+        ? '登录已过期，请重新登录'
+        : '权限不足，请使用有权限的账号登录'
+      if (window.confirm(message)) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error.response?.data?.message ? new Error(error.response.data.message) : error)
   }

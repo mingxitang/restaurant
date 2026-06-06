@@ -31,6 +31,22 @@ docker compose logs -f admin
 docker compose logs -f mysql
 ```
 
+当前 Compose 启动前需要先准备根目录 `.env`：
+
+```powershell
+copy .env.example .env
+```
+
+至少设置：
+
+```text
+MYSQL_ROOT_PASSWORD
+SPRING_DATASOURCE_PASSWORD
+JWT_SECRET
+```
+
+如果启动时报 `MYSQL_ROOT_PASSWORD is required`、`SPRING_DATASOURCE_PASSWORD is required` 或 `JWT_SECRET is required`，说明 `.env` 缺失或对应变量没有填写。这是安全加固后的预期保护，不要把真实密码和 JWT 密钥重新写死到 `docker-compose.yml` 或 `application.yml`。
+
 ## 1. MySQL 端口绑定失败
 
 ### 现象

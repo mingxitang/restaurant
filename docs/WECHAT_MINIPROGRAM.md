@@ -80,6 +80,7 @@ New-NetFirewallRule -DisplayName "Restaurant Backend 8080" -Direction Inbound -A
 常见现象：
 
 - `request:fail -118:net::ERR_CONNECTION_TIMED_OUT`：手机无法访问电脑后端，优先检查防火墙、portproxy、手机和电脑是否在同一可互访网络。
+- 登录页提示 `request fail` 且 `API_BASE_URL` 仍为 `localhost`：小程序无法稳定访问电脑后端，请改为电脑局域网 IP 或 HTTPS 合法域名。
 - 电脑可访问但手机不可访问：通常是 Windows 防火墙、公用网络策略或热点隔离。
 - 手机浏览器可访问但小程序不可访问：检查微信开发者工具是否关闭合法域名校验，或改用 HTTPS 合法域名。
 
@@ -153,6 +154,14 @@ $env:WECHAT_APP_SECRET="你的微信小程序AppSecret"
 ```
 
 配置后需要重启后端。
+
+如果微信一键登录出现 `request fail`，先排查网络地址：
+
+- 开发者工具本地调试：确认已关闭合法域名校验，且后端正在运行。
+- 真机调试：`API_BASE_URL` 不能使用 `localhost`，需要改为电脑局域网 IP。
+- 体验版/正式版：必须使用 HTTPS 合法域名，并在微信公众平台配置 request 合法域名。
+
+如果网络请求能到后端，但返回“后端未配置微信小程序 appId/secret”，再检查 `WECHAT_APP_ID` 和 `WECHAT_APP_SECRET`。
 
 旧数据库需要执行迁移：
 
@@ -298,7 +307,16 @@ waiter_call
 source restaurant-backend/src/main/resources/sql/migration-add-waiter-call.sql;
 ```
 
-## 十一、图片显示
+## 十一、点餐页按钮闪烁
+
+如果点击加菜/减菜按钮时页面明显闪烁，通常是小程序列表被频繁整屏重绘。当前点餐页已做两点处理：
+
+- 购物车数量、筛选列表和合计金额合并为一次 `setData`。
+- 移除每次加菜后的成功 toast，避免 toast 叠加造成闪烁感。
+
+如果后续继续改菜单页，尽量避免在一次点击中连续调用多次 `setData` 更新整份 `dishes` / `filteredDishes`。
+
+## 十二、图片显示
 
 菜品图片上传后保存到：
 
@@ -332,7 +350,7 @@ http://电脑IP:8080/uploads/dishes/xxxxxxxx.png
 
 如果手机浏览器能打开图片，但小程序仍不显示，优先改用 HTTPS 合法域名。
 
-## 十二、剩余计划
+## 十三、剩余计划
 
 - 接入真实微信支付：`wx.requestPayment()` + 后端支付签名和回调。
 - 管理端正式小程序码生成：后端调用微信小程序码接口。

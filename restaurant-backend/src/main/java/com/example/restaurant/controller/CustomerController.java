@@ -8,6 +8,7 @@ import com.example.restaurant.service.DishService;
 import com.example.restaurant.service.OrderService;
 import com.example.restaurant.service.ReviewService;
 import com.example.restaurant.service.WaiterCallService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,7 +38,7 @@ public class CustomerController {
     }
 
     @PostMapping("/orders")
-    public ApiResponse<Order> placeOrder(@RequestBody CustomerOrderRequest request) {
+    public ApiResponse<Order> placeOrder(@Valid @RequestBody CustomerOrderRequest request) {
         OrderCreateRequest createRequest = new OrderCreateRequest();
         createRequest.setTableId(request.getTableId());
         createRequest.setUserId(request.getUserId());
@@ -56,7 +57,7 @@ public class CustomerController {
     }
 
     @PostMapping("/orders/{id}/pay")
-    public ApiResponse<Void> pay(@PathVariable Long id, @RequestBody PayOrderRequest request) {
+    public ApiResponse<Void> pay(@PathVariable Long id, @Valid @RequestBody PayOrderRequest request) {
         orderService.pay(id, request);
         return ApiResponse.ok();
     }
@@ -68,20 +69,21 @@ public class CustomerController {
     }
 
     @PostMapping("/orders/{id}/review")
-    public ApiResponse<Void> review(@PathVariable Long id, @RequestBody ReviewRequest request) {
-        request.setOrderId(id);
-        reviewService.create(request);
+    public ApiResponse<Void> review(@PathVariable Long id, @Valid @RequestBody CustomerReviewRequest request) {
+        ReviewRequest reviewRequest = new ReviewRequest();
+        reviewRequest.setRating(request.getRating());
+        reviewRequest.setComment(request.getComment());
+        reviewRequest.setOrderId(id);
+        reviewService.create(reviewRequest);
         return ApiResponse.ok();
     }
 
     @PostMapping("/call-waiter")
-    public ApiResponse<Void> callWaiter(@RequestBody java.util.Map<String, Object> body) {
-        Object tableIdValue = body.get("tableId");
-        Integer tableId = tableIdValue == null ? null : Integer.valueOf(String.valueOf(tableIdValue));
-        Object userIdValue = body.get("userId");
-        Long userId = userIdValue == null ? null : Long.valueOf(String.valueOf(userIdValue));
-        String remark = body.get("remark") == null ? "顾客呼叫服务员" : String.valueOf(body.get("remark"));
-        waiterCallService.create(tableId, userId, remark);
+    public ApiResponse<Void> callWaiter(@Valid @RequestBody WaiterCallRequest request) {
+        String remark = request.getRemark() == null || request.getRemark().isBlank()
+                ? "顾客呼叫服务员"
+                : request.getRemark();
+        waiterCallService.create(request.getTableId(), request.getUserId(), remark);
         return ApiResponse.ok();
     }
 }

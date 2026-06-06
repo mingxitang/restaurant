@@ -1,57 +1,50 @@
-server:
-  port: 8080
-
-spring:
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
     url: "${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/restaurant_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}"
     username: "${SPRING_DATASOURCE_USERNAME:root}"
-    password: "${SPRING_DATASOURCE_PASSWORD:1234}"
-  jackson:
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: Asia/Shanghai
-  # 默认排除 Redis 自动配置，保证 Windows 无 Redis 也能启动
-  # 在 WSL/Linux 启用 Redis 时：删掉下面这行，并启用 app.redis 配置块
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.example.restaurant.entity
-  configuration:
-    map-underscore-to-camel-case: true
-
-jwt:
-  secret: "${JWT_SECRET:restaurant-course-design-secret-key-change-me-please-2026}"
-  expiration-minutes: 1440
-
-app:
-  cors:
-    allowed-origins:
-      - http://localhost:*
-      - http://127.0.0.1:*
-  # ========== Redis 开关 ==========
-  # Windows（默认）: enabled: false，使用内存黑名单，不需要装 Redis
-  # WSL / Linux:     enabled: true，同时删除上面 autoconfigure.exclude 并启用下方 spring.data.redis
-  redis:
-    enabled: false
+    password: "${SPRING_DATASOURCE_PASSWORD}"
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  data:
+    redis:
+      host: "${SPRING_DATA_REDIS_HOST:localhost}"
+      port: "${SPRING_DATA_REDIS_PORT:6379}"
+      timeout: "${SPRING_DATA_REDIS_TIMEOUT:3000ms}"
+      lettuce:
+        pool:
+          max-active: "${SPRING_DATA_REDIS_LETTUCE_POOL_MAX_ACTIVE:8}"
+          max-idle: "${SPRING_DATA_REDIS_LETTUCE_POOL_MAX_IDLE:8}"
+          min-idle: "${SPRING_DATA_REDIS_LETTUCE_POOL_MIN_IDLE:2}"
 
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.restaurant.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+jwt:
+  secret: "${JWT_SECRET}"
+  expiration-minutes: 1440
+
+app:
+  security:
+    login-rate-limit:
+      max-failures: ${LOGIN_RATE_LIMIT_MAX_FAILURES:5}
+      window-minutes: ${LOGIN_RATE_LIMIT_WINDOW_MINUTES:10}
+      lock-minutes: ${LOGIN_RATE_LIMIT_LOCK_MINUTES:10}
+  cors:
+    allowed-origins:
+      - http://localhost:*
+      - http://127.0.0.1:*
+  # Windows default: false, use in-memory JWT blacklist.
+  # Docker / WSL / Linux: true, use Redis blacklist and Redis CacheManager.
+  redis:
+    enabled: "${APP_REDIS_ENABLED:false}"
   wechat:
-
     app-id: ${WECHAT_APP_ID:}
-
     secret: ${WECHAT_APP_SECRET:}
-
-# ========== Redis 连接配置（启用时取消注释）==========
-#spring:
-#  data:
-#    redis:
-#      host: localhost
-#      port: 6379
-#      timeout: 3000ms
-#      lettuce:
-#        pool:
-#          max-active: 8
-#          max-idle: 8
-#          min-idle: 2

@@ -1,6 +1,7 @@
 package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.Dish;
 import com.example.restaurant.service.DishService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,8 +26,13 @@ public class DishController {
     }
 
     @GetMapping
-    public ApiResponse<List<Dish>> list(@RequestParam(required = false) String keyword, @RequestParam(required = false) Integer categoryId) {
-        return ApiResponse.ok(dishService.list(keyword, categoryId));
+    public ApiResponse<?> list(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer categoryId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<Dish> dishes = dishService.list(keyword, categoryId);
+        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(dishes, page, size) : dishes);
     }
 
     @GetMapping("/low-stock")

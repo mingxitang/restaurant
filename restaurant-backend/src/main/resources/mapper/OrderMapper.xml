@@ -154,6 +154,13 @@
           AND dish_id = #{dishId}
     </update>
 
+    <update id="updatePendingDetailStatus">
+        UPDATE order_detail
+        SET status = #{status}
+        WHERE order_id = #{orderId}
+          AND (status IS NULL OR status = 'PENDING')
+    </update>
+
     <update id="completePaidOrderIfFullyServed">
         UPDATE orders o
         SET o.status = 'COMPLETED'

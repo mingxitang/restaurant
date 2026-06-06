@@ -1,6 +1,7 @@
 package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.WaiterCall;
 import com.example.restaurant.service.WaiterCallService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,8 +21,12 @@ public class WaiterCallController {
     }
 
     @GetMapping
-    public ApiResponse<List<WaiterCall>> list(@RequestParam(required = false) String status) {
-        return ApiResponse.ok(waiterCallService.list(status));
+    public ApiResponse<?> list(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        List<WaiterCall> calls = waiterCallService.list(status);
+        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(calls, page, size) : calls);
     }
 
     @PutMapping("/{id}/handle")

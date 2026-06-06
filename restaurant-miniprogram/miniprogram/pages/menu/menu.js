@@ -31,6 +31,42 @@ function enrichDishCartCount(dishes, cart) {
   return dishes
 }
 
+function filterDishes(dishes, activeCat, keyword) {
+  keyword = (keyword || '').toLowerCase()
+  var filtered = []
+
+  for (var i = 0; i < dishes.length; i += 1) {
+    var dish = dishes[i]
+    var matchCategory = !activeCat || dish.categoryIdText === String(activeCat)
+    var name = dish.dishName || ''
+    var desc = dish.description || ''
+    var matchKeyword = !keyword ||
+      name.toLowerCase().indexOf(keyword) >= 0 ||
+      desc.toLowerCase().indexOf(keyword) >= 0
+
+    if (matchCategory && matchKeyword) {
+      filtered.push(dish)
+    }
+  }
+
+  return filtered
+}
+
+function summarizeCart(cart) {
+  var count = 0
+  var total = 0
+
+  for (var i = 0; i < cart.length; i += 1) {
+    count += cart[i].quantity
+    total += Number(cart[i].price || 0) * cart[i].quantity
+  }
+
+  return {
+    cartCount: count,
+    cartTotalText: money(total),
+  }
+}
+
 function updateDishImage(dishes, dishId, updates) {
   var next = dishes.slice()
   for (var i = 0; i < next.length; i += 1) {
@@ -146,27 +182,8 @@ Page({
   },
 
   applyFilter: function () {
-    var dishes = this.data.dishes
-    var activeCat = this.data.activeCat
-    var keyword = this.data.keyword.toLowerCase()
-    var filtered = []
-
-    for (var i = 0; i < dishes.length; i += 1) {
-      var dish = dishes[i]
-      var matchCategory = !activeCat || dish.categoryIdText === String(activeCat)
-      var name = dish.dishName || ''
-      var desc = dish.description || ''
-      var matchKeyword = !keyword ||
-        name.toLowerCase().indexOf(keyword) >= 0 ||
-        desc.toLowerCase().indexOf(keyword) >= 0
-
-      if (matchCategory && matchKeyword) {
-        filtered.push(dish)
-      }
-    }
-
     this.setData({
-      filteredDishes: filtered,
+      filteredDishes: filterDishes(this.data.dishes, this.data.activeCat, this.data.keyword),
     })
   },
 
@@ -248,10 +265,6 @@ Page({
     }
 
     this.saveCart(cart)
-    wx.showToast({
-      title: '已加入',
-      icon: 'success',
-    })
   },
 
   onToggleCart: function () {
@@ -333,28 +346,23 @@ Page({
 
   saveCart: function (cart) {
     var dishes = enrichDishCartCount(this.data.dishes.slice(), cart)
+    var summary = summarizeCart(cart)
     wx.setStorageSync(STORAGE_KEYS.customerCart, cart)
     this.setData({
       cart: cart,
       dishes: dishes,
+      filteredDishes: filterDishes(dishes, this.data.activeCat, this.data.keyword),
+      cartCount: summary.cartCount,
+      cartTotalText: summary.cartTotalText,
     })
-    this.applyFilter()
-    this.updateCartSummary()
   },
 
   updateCartSummary: function () {
-    var cart = this.data.cart
-    var count = 0
-    var total = 0
-
-    for (var i = 0; i < cart.length; i += 1) {
-      count += cart[i].quantity
-      total += Number(cart[i].price || 0) * cart[i].quantity
-    }
+    var summary = summarizeCart(this.data.cart)
 
     this.setData({
-      cartCount: count,
-      cartTotalText: money(total),
+      cartCount: summary.cartCount,
+      cartTotalText: summary.cartTotalText,
     })
   },
 

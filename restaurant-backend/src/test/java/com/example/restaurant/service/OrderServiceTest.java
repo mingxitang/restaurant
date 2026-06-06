@@ -1,5 +1,6 @@
 package com.example.restaurant.service;
 
+import com.example.restaurant.dto.PayOrderRequest;
 import com.example.restaurant.entity.Order;
 import com.example.restaurant.entity.OrderDetail;
 import com.example.restaurant.mapper.DishMapper;
@@ -16,6 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +34,27 @@ class OrderServiceTest {
 
     @InjectMocks
     private OrderService orderService;
+
+    @Test
+    void payOnlyMovesPendingDetailsToPreparing() {
+        Order order = new Order();
+        order.setOrderId(10L);
+        order.setTableId(3);
+        order.setTotalAmount(new BigDecimal("58.00"));
+        PayOrderRequest request = new PayOrderRequest();
+        request.setPayMethod("现金");
+        request.setDiscountAmount(BigDecimal.ZERO);
+        when(orderMapper.findById(10L)).thenReturn(order);
+
+        orderService.pay(10L, request);
+
+        verify(orderMapper).pay(org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.eq(new BigDecimal("58.00")),
+                org.mockito.ArgumentMatchers.eq(BigDecimal.ZERO), org.mockito.ArgumentMatchers.eq("现金"), org.mockito.ArgumentMatchers.anyString());
+        verify(orderMapper).updateStatus(10L, "PAID");
+        verify(tableInfoMapper).updateStatus(3, "FREE");
+        verify(orderMapper).updatePendingDetailStatus(10L, "PREPARING");
+        verify(orderMapper, never()).findDetails(10L);
+    }
 
     @Test
     void unpayRestoresTableToOccupied() {

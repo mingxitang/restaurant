@@ -5,6 +5,9 @@ target/
 .idea/
 .vscode/
 *.log
+.env
+.env.*
+!.env.example
 .alma-snapshots
 .claude
 nul

@@ -3,8 +3,8 @@ var STORAGE_KEYS = require('../../config/index').STORAGE_KEYS
 
 Page({
   data: {
-    phone: '13800000001',
-    password: '123456',
+    phone: '',
+    password: '',
     loading: false,
     wxLoading: false,
     error: '',

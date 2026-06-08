@@ -3,9 +3,11 @@ package com.example.restaurant.service;
 import com.example.restaurant.common.BusinessException;
 import com.example.restaurant.dto.RefundRequest;
 import com.example.restaurant.entity.RefundRecord;
+import com.example.restaurant.entity.StockChangeLog;
 import com.example.restaurant.mapper.DishMapper;
 import com.example.restaurant.mapper.OrderMapper;
 import com.example.restaurant.mapper.RefundMapper;
+import com.example.restaurant.mapper.StockChangeLogMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -33,6 +35,9 @@ class RefundServiceTest {
     @Mock
     private OrderMapper orderMapper;
 
+    @Mock
+    private StockChangeLogMapper stockChangeLogMapper;
+
     @InjectMocks
     private RefundService refundService;
 
@@ -49,6 +54,7 @@ class RefundServiceTest {
         inOrder.verify(orderMapper).deleteRefundedDetail(10L, 5L, 2);
         inOrder.verify(orderMapper).decreaseTotal(10L, new BigDecimal("38.00"));
         verify(dishMapper).increaseStock(5L, 2);
+        verify(stockChangeLogMapper).insert(any(StockChangeLog.class));
     }
 
     @Test
@@ -63,6 +69,7 @@ class RefundServiceTest {
         verify(orderMapper, never()).deleteRefundedDetail(10L, 5L, 2);
         verify(orderMapper, never()).decreaseTotal(10L, new BigDecimal("38.00"));
         verify(dishMapper, never()).increaseStock(5L, 2);
+        verify(stockChangeLogMapper, never()).insert(any(StockChangeLog.class));
     }
 
     private RefundRequest refundRequest() {

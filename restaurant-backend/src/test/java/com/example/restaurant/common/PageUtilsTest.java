@@ -8,21 +8,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PageUtilsTest {
     @Test
-    void pageReturnsRequestedSliceAndMetadata() {
-        PageResponse<Integer> page = PageUtils.page(List.of(1, 2, 3, 4, 5), 2, 2);
+    void normalizeReturnsOffsetAndClampedSize() {
+        PageUtils.PageParams params = PageUtils.normalize(2, 200);
 
-        assertThat(page.getRecords()).containsExactly(3, 4);
-        assertThat(page.getTotal()).isEqualTo(5);
-        assertThat(page.getPage()).isEqualTo(2);
-        assertThat(page.getSize()).isEqualTo(2);
-        assertThat(page.getPages()).isEqualTo(3);
+        assertThat(params.getPage()).isEqualTo(2);
+        assertThat(params.getSize()).isEqualTo(100);
+        assertThat(params.getOffset()).isEqualTo(100);
     }
 
     @Test
-    void pageClampsInvalidPageToFirstPage() {
-        PageResponse<Integer> page = PageUtils.page(List.of(1, 2, 3), 0, 2);
+    void responseBuildsMetadataFromDatabaseRecords() {
+        PageUtils.PageParams params = PageUtils.normalize(0, 2);
+        PageResponse<Integer> page = PageUtils.response(List.of(1, 2), 5, params);
 
         assertThat(page.getRecords()).containsExactly(1, 2);
+        assertThat(page.getTotal()).isEqualTo(5);
         assertThat(page.getPage()).isEqualTo(1);
+        assertThat(page.getSize()).isEqualTo(2);
+        assertThat(page.getPages()).isEqualTo(3);
     }
 }

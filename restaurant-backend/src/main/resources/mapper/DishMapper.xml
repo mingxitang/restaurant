@@ -15,6 +15,34 @@
         ORDER BY d.dish_id DESC
     </select>
 
+    <select id="findPage" resultType="Dish">
+        SELECT d.*, c.category_name
+        FROM dish d LEFT JOIN category c ON d.category_id = c.category_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND d.dish_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND d.category_id = #{categoryId}
+            </if>
+        </where>
+        ORDER BY d.dish_id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM dish d
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND d.dish_name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND d.category_id = #{categoryId}
+            </if>
+        </where>
+    </select>
+
     <select id="findById" resultType="Dish">
         SELECT d.*, c.category_name
         FROM dish d LEFT JOIN category c ON d.category_id = c.category_id

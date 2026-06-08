@@ -25,15 +25,18 @@ import { login } from '../api'
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const form = reactive({ phone: '', password: '123456' })
+const form = reactive({
+  phone: import.meta.env.VITE_DEMO_PHONE || '',
+  password: import.meta.env.VITE_DEMO_PASSWORD || ''
+})
 
 async function submit() {
   loading.value = true
   error.value = ''
   try {
     const data = await login(form)
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(data))
+    sessionStorage.setItem('token', data.token)
+    sessionStorage.setItem('user', JSON.stringify(data))
     router.push('/')
   } catch (err) {
     error.value = err.message || '登录失败'

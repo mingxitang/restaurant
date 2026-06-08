@@ -211,7 +211,7 @@ mvn -q test
 | 问题 | 原风险 | 本轮处理 |
 | --- | --- | --- |
 | `DashboardView` 过大 | 服务呼叫、桌台、订单、退菜等逻辑全部挤在一个组件里 | 先拆出 `WaiterCallPanel.vue`，保留原事件流，降低首页组件体积和职责 |
-| 列表接口缺少分页 | 数据增长后一次性返回全量列表 | 新增 `PageResponse` / `PageUtils`；订单、菜品、用户、桌台、退款、评价、服务呼叫列表支持 `page` / `size`；未传分页参数时仍返回原数组，兼容现有前端 |
+| 列表接口缺少分页 | 数据增长后一次性返回全量列表 | 新增 `PageResponse` / `PageUtils`；订单、菜品、分类、用户、桌台、退款、评价、服务呼叫列表支持 `page` / `size`；未传分页参数时仍返回原数组，兼容现有前端 |
 | `pay()` 覆盖烹饪状态 | 支付时可能把 `READY/SERVED` 等状态重置成 `PREPARING` | 新增 `updatePendingDetailStatus`，只更新 `status IS NULL OR status = 'PENDING'` 的明细 |
 | 前端金额浮点精度 | JS 浮点计算可能显示出 `0.30000000000000004` 类问题 | 顾客端和管理端购物车合计改为按“分”累计后除以 100 |
 | CORS 过宽 | `allowedHeaders("*")` + credentials 不利于生产部署 | CORS 请求头收紧为 `Authorization`、`Content-Type`、`X-Requested-With`，保留本地开发来源 |
@@ -229,6 +229,13 @@ mvn -q test
 ```
 
 这样不会打断现有管理端、顾客端和小程序端调用。
+
+分页实现边界：
+
+```text
+传 page 或 size：Controller 调用 Service.page()，Mapper 执行 COUNT(*) + LIMIT/OFFSET
+PageUtils：只负责 page/size 规范化和 PageResponse 元数据组装，不再对全量 List 做 subList
+```
 
 Swagger 入口：
 
@@ -277,6 +284,25 @@ restaurant-customer/src/views/MenuView.vue
 ```text
 restaurant-backend/src/test/java/com/example/restaurant/common/PageUtilsTest.java
 restaurant-backend/src/test/java/com/example/restaurant/service/OrderServiceTest.java
+```
+
+### 十三、2026-06-08 Code Review 待优化补修
+
+本轮补修项：
+
+| 问题 | 本轮处理 |
+| --- | --- |
+| `PageUtils` 内存分页 | 所有主要列表分页请求下沉到 MyBatis `COUNT + LIMIT/OFFSET`，分类列表也补齐 `page/size` |
+| 下单 `create()` 并发隐患 | 事务内先锁定 `table_info` 桌台行，再查询或创建活跃订单，避免同桌台并发创建多张活跃单 |
+| 库存变动无审计 | 新增 `stock_change_log`，记录下单扣减、取消恢复、退菜回库和手动库存调整的库存流水 |
+| `v_kitchen_queue` 视图重复创建 | 旧迁移移除重复视图定义，最新版集中在 `schema.sql` 和 `migration-current-db-fixes.sql` |
+
+涉及迁移：
+
+```text
+restaurant-backend/src/main/resources/sql/schema.sql
+restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql
+restaurant-backend/src/main/resources/sql/migration-add-detail-status.sql
 ```
 
 ### 十二、第三轮验证记录

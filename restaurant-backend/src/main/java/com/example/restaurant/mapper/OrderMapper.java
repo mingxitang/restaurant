@@ -12,6 +12,11 @@ import java.util.Map;
 public interface OrderMapper {
     List<Order> findAll(@Param("status") String status, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
+    List<Order> findPage(@Param("status") String status, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate,
+                         @Param("offset") int offset, @Param("size") int size);
+
+    long countAll(@Param("status") String status, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
     Order findById(@Param("orderId") Long orderId);
 
     Order findActiveByTableId(@Param("tableId") Integer tableId);

@@ -5,6 +5,14 @@
         SELECT * FROM category ORDER BY category_id DESC
     </select>
 
+    <select id="findPage" resultType="Category">
+        SELECT * FROM category ORDER BY category_id DESC LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM category
+    </select>
+
     <select id="findById" resultType="Category">
         SELECT * FROM category WHERE category_id = #{categoryId}
     </select>

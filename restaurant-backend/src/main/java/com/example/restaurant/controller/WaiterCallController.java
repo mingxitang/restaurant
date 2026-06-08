@@ -2,12 +2,10 @@ package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
 import com.example.restaurant.common.PageUtils;
-import com.example.restaurant.entity.WaiterCall;
 import com.example.restaurant.service.WaiterCallService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,8 +23,9 @@ public class WaiterCallController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<WaiterCall> calls = waiterCallService.list(status);
-        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(calls, page, size) : calls);
+        return ApiResponse.ok(PageUtils.requested(page, size)
+                ? waiterCallService.page(status, page, size)
+                : waiterCallService.list(status));
     }
 
     @PutMapping("/{id}/handle")

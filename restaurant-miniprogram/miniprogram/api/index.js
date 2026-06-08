@@ -61,12 +61,11 @@ function reviewOrder(id, data) {
   })
 }
 
-function callWaiter(tableId, userId) {
+function callWaiter(tableId) {
   return request('/api/customer/call-waiter', {
     method: 'POST',
     data: {
       tableId: tableId,
-      userId: userId,
       remark: '顾客呼叫服务员',
     },
   })

@@ -14,6 +14,30 @@
         ORDER BY o.order_id DESC
     </select>
 
+    <select id="findPage" resultType="Order">
+        SELECT o.*, t.table_number, u.username
+        FROM orders o
+        LEFT JOIN table_info t ON o.table_id = t.table_id
+        LEFT JOIN `user` u ON o.user_id = u.user_id
+        <where>
+            <if test="status != null and status != ''">AND o.status = #{status}</if>
+            <if test="startDate != null">AND DATE(o.order_time) &gt;= #{startDate}</if>
+            <if test="endDate != null">AND DATE(o.order_time) &lt;= #{endDate}</if>
+        </where>
+        ORDER BY o.order_id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM orders o
+        <where>
+            <if test="status != null and status != ''">AND o.status = #{status}</if>
+            <if test="startDate != null">AND DATE(o.order_time) &gt;= #{startDate}</if>
+            <if test="endDate != null">AND DATE(o.order_time) &lt;= #{endDate}</if>
+        </where>
+    </select>
+
     <select id="findById" resultType="Order">
         SELECT o.*, t.table_number, u.username
         FROM orders o

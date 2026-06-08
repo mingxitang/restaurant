@@ -8,6 +8,11 @@ import java.util.List;
 public interface DishMapper {
     List<Dish> findAll(@Param("keyword") String keyword, @Param("categoryId") Integer categoryId);
 
+    List<Dish> findPage(@Param("keyword") String keyword, @Param("categoryId") Integer categoryId,
+                        @Param("offset") int offset, @Param("size") int size);
+
+    long countAll(@Param("keyword") String keyword, @Param("categoryId") Integer categoryId);
+
     Dish findById(@Param("dishId") Long dishId);
 
     int insert(Dish dish);

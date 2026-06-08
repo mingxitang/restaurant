@@ -6,7 +6,7 @@ const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -27,8 +27,8 @@ http.interceptors.response.use(
         ? '登录已过期，请重新登录'
         : '权限不足，请使用有权限的账号登录'
       if (window.confirm(message)) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        sessionStorage.removeItem('token')
+        sessionStorage.removeItem('user')
         window.location.href = '/login'
       }
     }

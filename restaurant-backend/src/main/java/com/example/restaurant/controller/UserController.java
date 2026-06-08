@@ -7,8 +7,6 @@ import com.example.restaurant.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/users")
 @PreAuthorize("hasRole('管理员')")
@@ -24,8 +22,9 @@ public class UserController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<User> users = userService.list(keyword);
-        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(users, page, size) : users);
+        return ApiResponse.ok(PageUtils.requested(page, size)
+                ? userService.page(keyword, page, size)
+                : userService.list(keyword));
     }
 
     @PostMapping

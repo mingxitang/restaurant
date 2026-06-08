@@ -94,8 +94,9 @@ restaurant
 - 一桌一单：同一桌未结账时，加菜会追加到当前订单。
 - 小程序扫码进入桌台时，会按桌台找回当前 `PENDING` 或 `PAID` 订单。
 - 同一道菜重复加菜时，合并数量，不重复插入明细。
-- 下单扣减库存。
-- 退菜可回滚库存，并同步订单金额。
+- 下单扣减库存，并写入 `stock_change_log` 的 `ORDER_CREATE/OUT` 流水。
+- 取消订单和退菜回库会恢复库存，并写入 `ORDER_CANCEL/IN` 或 `REFUND_RETURN/IN` 流水；退菜同时同步订单金额。
+- 管理端手动调整菜品库存时，会按差值写入 `MANUAL_ADJUST/IN|OUT` 流水。
 - 支付成功后释放桌台。
 - 管理端结账后订单完成并释放桌台。
 
@@ -125,6 +126,8 @@ source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
 source restaurant-backend/src/main/resources/sql/migration-add-waiter-call.sql;
 source restaurant-backend/src/main/resources/sql/migration-add-user-wx-openid.sql;
 ```
+
+`migration-current-db-fixes.sql` 目前同时负责旧库补齐 `order_detail.status`、订单催单字段、最新版 `v_kitchen_queue` 视图，以及 `stock_change_log` 库存变动流水表。旧版 `migration-add-detail-status.sql` 不再重复创建 `v_kitchen_queue`。
 
 当前默认数据库配置在：
 
@@ -556,7 +559,7 @@ source restaurant-backend/src/main/resources/sql/migration-current-db-fixes.sql;
 
 - 订单是否已经成功下单。
 - `order_detail.status` 字段是否存在。
-- `v_kitchen_queue` 视图是否已创建。
+- `v_kitchen_queue` 视图是否已由 `schema.sql` 或 `migration-current-db-fixes.sql` 创建为最新版。
 - 旧数据库是否执行过迁移脚本。
 
 ### 5. 顾客端图片不显示

@@ -1,13 +1,18 @@
 package com.example.restaurant.service;
 
 import com.example.restaurant.common.BusinessException;
+import com.example.restaurant.common.PageResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.dto.OrderCreateRequest;
 import com.example.restaurant.dto.PayOrderRequest;
 import com.example.restaurant.entity.Dish;
 import com.example.restaurant.entity.Order;
 import com.example.restaurant.entity.OrderDetail;
+import com.example.restaurant.entity.StockChangeLog;
+import com.example.restaurant.entity.TableInfo;
 import com.example.restaurant.mapper.DishMapper;
 import com.example.restaurant.mapper.OrderMapper;
+import com.example.restaurant.mapper.StockChangeLogMapper;
 import com.example.restaurant.mapper.TableInfoMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,15 +29,25 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final DishMapper dishMapper;
     private final TableInfoMapper tableInfoMapper;
+    private final StockChangeLogMapper stockChangeLogMapper;
 
-    public OrderService(OrderMapper orderMapper, DishMapper dishMapper, TableInfoMapper tableInfoMapper) {
+    public OrderService(OrderMapper orderMapper, DishMapper dishMapper, TableInfoMapper tableInfoMapper,
+                        StockChangeLogMapper stockChangeLogMapper) {
         this.orderMapper = orderMapper;
         this.dishMapper = dishMapper;
         this.tableInfoMapper = tableInfoMapper;
+        this.stockChangeLogMapper = stockChangeLogMapper;
     }
 
     public List<Order> list(String status, LocalDate startDate, LocalDate endDate) {
         return orderMapper.findAll(status, startDate, endDate);
+    }
+
+    public PageResponse<Order> page(String status, LocalDate startDate, LocalDate endDate, Integer page, Integer size) {
+        PageUtils.PageParams params = PageUtils.normalize(page, size);
+        long total = orderMapper.countAll(status, startDate, endDate);
+        List<Order> records = total == 0 ? List.of() : orderMapper.findPage(status, startDate, endDate, params.getOffset(), params.getSize());
+        return PageUtils.response(records, total, params);
     }
 
     public Order detail(Long id) {
@@ -51,10 +66,38 @@ public class OrderService {
         return order;
     }
 
+    public Order detailForCustomer(Long id, Long customerUserId) {
+        Order order = detail(id);
+        requireCustomerOwner(order, customerUserId);
+        return order;
+    }
+
+    public Order activeByTableIdForCustomer(Integer tableId, Long customerUserId) {
+        Order order = activeByTableId(tableId);
+        if (order == null) {
+            return null;
+        }
+        requireCustomerOwner(order, customerUserId);
+        return order;
+    }
+
     @Transactional
     public Order create(OrderCreateRequest request) {
+        return createInternal(request, null);
+    }
+
+    @Transactional
+    public Order createForCustomer(OrderCreateRequest request, Long customerUserId) {
+        return createInternal(request, customerUserId);
+    }
+
+    private Order createInternal(OrderCreateRequest request, Long customerUserId) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new BusinessException("订单明细不能为空");
+        }
+        TableInfo table = tableInfoMapper.lockById(request.getTableId());
+        if (table == null) {
+            throw new BusinessException("桌台不存在");
         }
         Order order = orderMapper.findActiveByTableId(request.getTableId());
         if (order == null) {
@@ -64,6 +107,8 @@ public class OrderService {
             order.setStatus("PENDING");
             order.setTotalAmount(BigDecimal.ZERO);
             orderMapper.insert(order);
+        } else if (customerUserId != null && !customerUserId.equals(order.getUserId())) {
+            throw new BusinessException("当前桌台已有其他顾客订单");
         }
 
         BigDecimal total = BigDecimal.ZERO;
@@ -76,6 +121,7 @@ public class OrderService {
             if (affected == 0) {
                 throw new BusinessException(dish.getDishName() + "库存不足");
             }
+            recordStockChange(item.getDishId(), order.getOrderId(), item.getQuantity(), "OUT", "ORDER_CREATE");
             OrderDetail detail = new OrderDetail();
             detail.setOrderId(order.getOrderId());
             detail.setDishId(item.getDishId());
@@ -103,13 +149,26 @@ public class OrderService {
         if (order == null) {
             throw new BusinessException("订单不存在");
         }
+        if (!"PENDING".equals(order.getStatus())) {
+            throw new BusinessException("只有待支付订单可以支付");
+        }
         BigDecimal discount = request.getDiscountAmount() == null ? BigDecimal.ZERO : request.getDiscountAmount();
-        BigDecimal paid = order.getTotalAmount().subtract(discount);
+        BigDecimal totalAmount = order.getTotalAmount() == null ? BigDecimal.ZERO : order.getTotalAmount();
+        if (discount.compareTo(totalAmount) > 0) {
+            throw new BusinessException("优惠金额不能超过订单金额");
+        }
+        BigDecimal paid = totalAmount.subtract(discount);
         String payNo = "PAY" + DateTimeFormatter.ofPattern("yyyyMMddHHmmss").format(java.time.LocalDateTime.now()) + orderId;
         orderMapper.pay(orderId, paid, discount, request.getPayMethod(), payNo);
         orderMapper.updateStatus(orderId, "PAID");
         tableInfoMapper.updateStatus(order.getTableId(), "FREE");
         orderMapper.updatePendingDetailStatus(orderId, "PREPARING");
+    }
+
+    @Transactional
+    public void payForCustomer(Long orderId, PayOrderRequest request, Long customerUserId) {
+        requireCustomerOwner(orderMapper.findById(orderId), customerUserId);
+        pay(orderId, request);
     }
 
     @Transactional
@@ -123,6 +182,7 @@ public class OrderService {
         }
         for (OrderDetail detail : order.getDetails()) {
             dishMapper.increaseStock(detail.getDishId(), detail.getQuantity());
+            recordStockChange(detail.getDishId(), orderId, detail.getQuantity(), "IN", "ORDER_CANCEL");
         }
         orderMapper.updateStatus(orderId, "CANCELLED");
         tableInfoMapper.updateStatus(order.getTableId(), "FREE");
@@ -151,6 +211,12 @@ public class OrderService {
             throw new BusinessException("当前订单状态不可催单");
         }
         orderMapper.remind(orderId);
+    }
+
+    @Transactional
+    public void remindForCustomer(Long orderId, Long customerUserId) {
+        requireCustomerOwner(orderMapper.findById(orderId), customerUserId);
+        remind(orderId);
     }
 
     @Transactional
@@ -205,6 +271,9 @@ public class OrderService {
 
     private LocalDate reportStartDate(String period) {
         LocalDate today = LocalDate.now();
+        if (period == null || period.isBlank()) {
+            return null;
+        }
         if ("day".equals(period)) {
             return today;
         }
@@ -214,6 +283,25 @@ public class OrderService {
         if ("month".equals(period)) {
             return today.withDayOfMonth(1);
         }
-        return null;
+        throw new BusinessException("报表周期不正确");
+    }
+
+    private void requireCustomerOwner(Order order, Long customerUserId) {
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        if (customerUserId == null || !customerUserId.equals(order.getUserId())) {
+            throw new BusinessException("无权访问该订单");
+        }
+    }
+
+    private void recordStockChange(Long dishId, Long orderId, Integer quantity, String changeType, String reason) {
+        StockChangeLog log = new StockChangeLog();
+        log.setDishId(dishId);
+        log.setOrderId(orderId);
+        log.setQuantity(quantity);
+        log.setChangeType(changeType);
+        log.setReason(reason);
+        stockChangeLogMapper.insert(log);
     }
 }

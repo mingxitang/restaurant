@@ -1,11 +1,15 @@
 package com.example.restaurant.service;
 
 import com.example.restaurant.common.BusinessException;
+import com.example.restaurant.common.PageResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.dto.RefundRequest;
 import com.example.restaurant.entity.RefundRecord;
+import com.example.restaurant.entity.StockChangeLog;
 import com.example.restaurant.mapper.DishMapper;
 import com.example.restaurant.mapper.OrderMapper;
 import com.example.restaurant.mapper.RefundMapper;
+import com.example.restaurant.mapper.StockChangeLogMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +21,25 @@ public class RefundService {
     private final RefundMapper refundMapper;
     private final DishMapper dishMapper;
     private final OrderMapper orderMapper;
+    private final StockChangeLogMapper stockChangeLogMapper;
 
-    public RefundService(RefundMapper refundMapper, DishMapper dishMapper, OrderMapper orderMapper) {
+    public RefundService(RefundMapper refundMapper, DishMapper dishMapper, OrderMapper orderMapper,
+                         StockChangeLogMapper stockChangeLogMapper) {
         this.refundMapper = refundMapper;
         this.dishMapper = dishMapper;
         this.orderMapper = orderMapper;
+        this.stockChangeLogMapper = stockChangeLogMapper;
     }
 
     public List<RefundRecord> list() {
         return refundMapper.findAll();
+    }
+
+    public PageResponse<RefundRecord> page(Integer page, Integer size) {
+        PageUtils.PageParams params = PageUtils.normalize(page, size);
+        long total = refundMapper.countAll();
+        List<RefundRecord> records = total == 0 ? List.of() : refundMapper.findPage(params.getOffset(), params.getSize());
+        return PageUtils.response(records, total, params);
     }
 
     @Transactional
@@ -48,10 +62,21 @@ public class RefundService {
         }
         if (Integer.valueOf(1).equals(request.getStockAction())) {
             dishMapper.increaseStock(request.getDishId(), request.getQuantity());
+            recordStockChange(request.getDishId(), request.getOrderId(), request.getQuantity(), "IN", "REFUND_RETURN");
         }
     }
 
     public List<Map<String, Object>> reasons() {
         return refundMapper.refundReasons();
+    }
+
+    private void recordStockChange(Long dishId, Long orderId, Integer quantity, String changeType, String reason) {
+        StockChangeLog log = new StockChangeLog();
+        log.setDishId(dishId);
+        log.setOrderId(orderId);
+        log.setQuantity(quantity);
+        log.setChangeType(changeType);
+        log.setReason(reason);
+        stockChangeLogMapper.insert(log);
     }
 }

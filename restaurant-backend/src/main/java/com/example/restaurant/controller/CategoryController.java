@@ -1,12 +1,11 @@
 package com.example.restaurant.controller;
 
 import com.example.restaurant.common.ApiResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.Category;
 import com.example.restaurant.service.CategoryService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -18,8 +17,12 @@ public class CategoryController {
     }
 
     @GetMapping
-    public ApiResponse<List<Category>> list() {
-        return ApiResponse.ok(categoryService.list());
+    public ApiResponse<?> list(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ApiResponse.ok(PageUtils.requested(page, size)
+                ? categoryService.page(page, size)
+                : categoryService.list());
     }
 
     @PostMapping

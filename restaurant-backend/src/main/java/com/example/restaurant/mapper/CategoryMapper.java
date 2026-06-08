@@ -8,6 +8,10 @@ import java.util.List;
 public interface CategoryMapper {
     List<Category> findAll();
 
+    List<Category> findPage(@Param("offset") int offset, @Param("size") int size);
+
+    long countAll();
+
     Category findById(@Param("categoryId") Integer categoryId);
 
     int insert(Category category);

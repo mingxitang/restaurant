@@ -79,7 +79,7 @@ async function toggleEnabled(user) {
 }
 
 async function resetPassword(user) {
-  const password = prompt(`请输入 ${user.username} 的新密码`, '123456')
+  const password = prompt(`请输入 ${user.username} 的新密码`, '')
   if (!password) return
   await updateUser(user.userId, { ...user, password })
   load()

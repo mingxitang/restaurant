@@ -10,7 +10,6 @@ public class CustomerOrderRequest {
     @NotNull(message = "桌台不能为空")
     private Integer tableId;
 
-    @NotNull(message = "用户不能为空")
     private Long userId;
 
     @Valid

@@ -339,7 +339,7 @@ const dishKeyword = ref('')
 const refundKeyword = ref('')
 const transferTargetId = ref(null)
 const months = ref([])
-const user = computed(() => JSON.parse(localStorage.getItem('user') || '{}'))
+const user = computed(() => JSON.parse(sessionStorage.getItem('user') || '{}'))
 const isChef = computed(() => user.value?.roleName === '厨师')
 const isAdmin = computed(() => user.value?.roleName === '管理员')
 const orderFilters = reactive({

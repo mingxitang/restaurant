@@ -16,6 +16,30 @@
         ORDER BY wc.call_time DESC
     </select>
 
+    <select id="findPage" resultType="WaiterCall">
+        SELECT wc.*,
+               t.table_number,
+               u.username,
+               h.username AS handler_name
+        FROM waiter_call wc
+        LEFT JOIN table_info t ON wc.table_id = t.table_id
+        LEFT JOIN `user` u ON wc.user_id = u.user_id
+        LEFT JOIN `user` h ON wc.handled_by = h.user_id
+        <where>
+            <if test="status != null and status != ''">AND wc.status = #{status}</if>
+        </where>
+        ORDER BY wc.call_time DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM waiter_call wc
+        <where>
+            <if test="status != null and status != ''">AND wc.status = #{status}</if>
+        </where>
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="callId">
         INSERT INTO waiter_call(table_id, user_id, status, remark)
         VALUES(#{tableId}, #{userId}, #{status}, #{remark})

@@ -7,7 +7,6 @@ import com.example.restaurant.service.TableInfoService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -24,8 +23,9 @@ public class TableInfoController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<TableInfo> tables = tableInfoService.list(status);
-        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(tables, page, size) : tables);
+        return ApiResponse.ok(PageUtils.requested(page, size)
+                ? tableInfoService.page(status, page, size)
+                : tableInfoService.list(status));
     }
 
     @PostMapping

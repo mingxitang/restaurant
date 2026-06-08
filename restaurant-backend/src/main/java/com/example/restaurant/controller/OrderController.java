@@ -14,11 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/orders")
-@PreAuthorize("hasAnyRole('管理员','服务员','厨师','顾客')")
+@PreAuthorize("hasAnyRole('管理员','服务员','厨师')")
 public class OrderController {
     private final OrderService orderService;
 
@@ -33,8 +31,9 @@ public class OrderController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<Order> orders = orderService.list(status, startDate, endDate);
-        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(orders, page, size) : orders);
+        return ApiResponse.ok(PageUtils.requested(page, size)
+                ? orderService.page(status, startDate, endDate, page, size)
+                : orderService.list(status, startDate, endDate));
     }
 
     @GetMapping("/{id}")

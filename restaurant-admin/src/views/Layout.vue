@@ -21,7 +21,7 @@ import { useRouter } from 'vue-router'
 import { logout as logoutApi } from '../api'
 
 const router = useRouter()
-const user = JSON.parse(localStorage.getItem('user') || 'null')
+const user = JSON.parse(sessionStorage.getItem('user') || 'null')
 const nav = [
   { name: '首页', path: '/dashboard', roles: ['管理员', '服务员', '厨师'] },
   { name: '身份管理', path: '/users', roles: ['管理员'] },
@@ -33,7 +33,7 @@ const nav = [
 
 async function logout() {
   try { await logoutApi() } catch (_) { /* 请求失败也不阻塞退出 */ }
-  localStorage.clear()
+  sessionStorage.clear()
   router.push('/login')
 }
 </script>

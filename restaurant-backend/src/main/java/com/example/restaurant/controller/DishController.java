@@ -31,8 +31,9 @@ public class DishController {
             @RequestParam(required = false) Integer categoryId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<Dish> dishes = dishService.list(keyword, categoryId);
-        return ApiResponse.ok(PageUtils.requested(page, size) ? PageUtils.page(dishes, page, size) : dishes);
+        return ApiResponse.ok(PageUtils.requested(page, size)
+                ? dishService.page(keyword, categoryId, page, size)
+                : dishService.list(keyword, categoryId));
     }
 
     @GetMapping("/low-stock")

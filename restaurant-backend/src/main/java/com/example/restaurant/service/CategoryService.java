@@ -1,5 +1,7 @@
 package com.example.restaurant.service;
 
+import com.example.restaurant.common.PageResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.Category;
 import com.example.restaurant.mapper.CategoryMapper;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,13 @@ public class CategoryService {
 
     public List<Category> list() {
         return categoryMapper.findAll();
+    }
+
+    public PageResponse<Category> page(Integer page, Integer size) {
+        PageUtils.PageParams params = PageUtils.normalize(page, size);
+        long total = categoryMapper.countAll();
+        List<Category> records = total == 0 ? List.of() : categoryMapper.findPage(params.getOffset(), params.getSize());
+        return PageUtils.response(records, total, params);
     }
 
     public Category create(Category category) {

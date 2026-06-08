@@ -16,6 +16,10 @@ public interface UserMapper {
 
     List<User> findAll(@Param("keyword") String keyword);
 
+    List<User> findPage(@Param("keyword") String keyword, @Param("offset") int offset, @Param("size") int size);
+
+    long countAll(@Param("keyword") String keyword);
+
     int insert(User user);
 
     int update(User user);

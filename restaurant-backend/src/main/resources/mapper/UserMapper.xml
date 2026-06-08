@@ -34,6 +34,28 @@
         ORDER BY u.user_id DESC
     </select>
 
+    <select id="findPage" resultType="User">
+        SELECT u.user_id, u.username, u.phone, u.wx_openid, u.points, u.role_id, u.enabled, u.create_time, u.update_time, r.role_name
+        FROM `user` u JOIN role r ON u.role_id = r.role_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY u.user_id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM `user` u
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (u.username LIKE CONCAT('%', #{keyword}, '%') OR u.phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="userId">
         INSERT INTO `user`(username, phone, wx_openid, points, password, role_id, enabled)
         VALUES(#{username}, #{phone}, #{wxOpenid}, COALESCE(#{points}, 0), #{password}, #{roleId}, #{enabled})

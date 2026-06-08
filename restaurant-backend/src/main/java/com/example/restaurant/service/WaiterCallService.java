@@ -1,6 +1,8 @@
 package com.example.restaurant.service;
 
 import com.example.restaurant.common.BusinessException;
+import com.example.restaurant.common.PageResponse;
+import com.example.restaurant.common.PageUtils;
 import com.example.restaurant.entity.WaiterCall;
 import com.example.restaurant.mapper.WaiterCallMapper;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,13 @@ public class WaiterCallService {
 
     public List<WaiterCall> list(String status) {
         return waiterCallMapper.findAll(status);
+    }
+
+    public PageResponse<WaiterCall> page(String status, Integer page, Integer size) {
+        PageUtils.PageParams params = PageUtils.normalize(page, size);
+        long total = waiterCallMapper.countAll(status);
+        List<WaiterCall> records = total == 0 ? List.of() : waiterCallMapper.findPage(status, params.getOffset(), params.getSize());
+        return PageUtils.response(records, total, params);
     }
 
     public WaiterCall create(Integer tableId, Long userId, String remark) {

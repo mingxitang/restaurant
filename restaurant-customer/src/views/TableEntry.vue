@@ -86,7 +86,7 @@ function manualSelect() {
 
 async function logout() {
   try { await logoutApi() } catch (_) { /* 请求失败也不阻塞退出 */ }
-  localStorage.clear()
+  sessionStorage.clear()
   store.clearCart()
   store.clearTable()
   router.push('/login')

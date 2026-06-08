@@ -14,14 +14,39 @@ public final class PageUtils {
         return page != null || size != null;
     }
 
-    public static <T> PageResponse<T> page(List<T> records, Integer page, Integer size) {
+    public static PageParams normalize(Integer page, Integer size) {
         int safePage = page == null || page < 1 ? DEFAULT_PAGE : page;
         int safeSize = size == null || size < 1 ? DEFAULT_SIZE : Math.min(size, MAX_SIZE);
-        int total = records == null ? 0 : records.size();
-        int from = Math.min((safePage - 1) * safeSize, total);
-        int to = Math.min(from + safeSize, total);
-        List<T> slice = records == null ? List.of() : records.subList(from, to);
-        int pages = total == 0 ? 0 : (int) Math.ceil((double) total / safeSize);
-        return new PageResponse<>(slice, total, safePage, safeSize, pages);
+        int offset = (safePage - 1) * safeSize;
+        return new PageParams(safePage, safeSize, offset);
+    }
+
+    public static <T> PageResponse<T> response(List<T> records, long total, PageParams params) {
+        int pages = total == 0 ? 0 : (int) Math.ceil((double) total / params.getSize());
+        return new PageResponse<>(records == null ? List.of() : records, total, params.getPage(), params.getSize(), pages);
+    }
+
+    public static final class PageParams {
+        private final int page;
+        private final int size;
+        private final int offset;
+
+        private PageParams(int page, int size, int offset) {
+            this.page = page;
+            this.size = size;
+            this.offset = offset;
+        }
+
+        public int getPage() {
+            return page;
+        }
+
+        public int getSize() {
+            return size;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
     }
 }

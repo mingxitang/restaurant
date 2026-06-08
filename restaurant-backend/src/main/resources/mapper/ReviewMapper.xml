@@ -6,11 +6,30 @@
         VALUES(#{rating}, #{comment}, #{orderId})
     </insert>
 
+    <select id="countByOrderId" resultType="int">
+        SELECT COUNT(*)
+        FROM review
+        WHERE order_id = #{orderId}
+    </select>
+
     <select id="findAll" resultType="Review">
         SELECT r.*, u.username, o.total_amount
         FROM review r
         JOIN orders o ON r.order_id = o.order_id
         JOIN `user` u ON o.user_id = u.user_id
         ORDER BY r.review_id DESC
+    </select>
+
+    <select id="findPage" resultType="Review">
+        SELECT r.*, u.username, o.total_amount
+        FROM review r
+        JOIN orders o ON r.order_id = o.order_id
+        JOIN `user` u ON o.user_id = u.user_id
+        ORDER BY r.review_id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM review
     </select>
 </mapper>

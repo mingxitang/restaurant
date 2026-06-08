@@ -29,10 +29,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (to.path !== '/login' && !localStorage.getItem('token')) {
+  if (to.path !== '/login' && !sessionStorage.getItem('token')) {
     return '/login'
   }
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  const user = JSON.parse(sessionStorage.getItem('user') || 'null')
   const roles = to.meta?.roles
   if (roles && !roles.includes(user?.roleName)) {
     return '/dashboard'

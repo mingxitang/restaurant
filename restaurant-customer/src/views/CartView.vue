@@ -71,10 +71,8 @@ async function submitOrder() {
   submitting.value = true
   error.value = ''
   try {
-    const user = JSON.parse(localStorage.getItem('user') || 'null')
     const data = await placeOrder({
       tableId: store.tableId,
-      userId: user?.userId,
       items: store.cart.map(item => ({
         dishId: item.dishId,
         quantity: item.quantity,

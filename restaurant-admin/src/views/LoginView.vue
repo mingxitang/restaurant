@@ -5,11 +5,11 @@
       <p>Web 管理端</p>
       <label>
         手机号
-        <input v-model="form.phone" placeholder="13800000000" />
+        <input v-model="form.phone" placeholder="请输入手机号" />
       </label>
       <label>
         密码
-        <input v-model="form.password" type="password" placeholder="123456" />
+        <input v-model="form.password" type="password" placeholder="请输入密码" />
       </label>
       <button :disabled="loading">{{ loading ? '登录中...' : '登录' }}</button>
       <span class="error" v-if="error">{{ error }}</span>
@@ -25,15 +25,18 @@ import { login } from '../api'
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
-const form = reactive({ phone: '13800000000', password: '123456' })
+const form = reactive({
+  phone: import.meta.env.VITE_DEMO_PHONE || '',
+  password: import.meta.env.VITE_DEMO_PASSWORD || ''
+})
 
 async function submit() {
   loading.value = true
   error.value = ''
   try {
     const data = await login(form)
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(data))
+    sessionStorage.setItem('token', data.token)
+    sessionStorage.setItem('user', JSON.stringify(data))
     router.push('/dashboard')
   } catch (err) {
     error.value = err.message || '登录失败'

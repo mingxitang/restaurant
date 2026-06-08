@@ -13,6 +13,18 @@
         ORDER BY r.refund_id DESC
     </select>
 
+    <select id="findPage" resultType="RefundRecord">
+        SELECT r.*, d.dish_name
+        FROM refund_record r
+        LEFT JOIN dish d ON r.dish_id = d.dish_id
+        ORDER BY r.refund_id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM refund_record
+    </select>
+
     <select id="refundReasons" resultType="map">
         SELECT refund_reason AS reason, COUNT(*) AS count, IFNULL(SUM(refund_amount), 0) AS amount
         FROM refund_record

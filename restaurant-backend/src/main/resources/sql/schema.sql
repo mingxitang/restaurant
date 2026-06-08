@@ -2,6 +2,7 @@ CREATE DATABASE IF NOT EXISTS restaurant_db CHARACTER SET utf8mb4 COLLATE utf8mb
 USE restaurant_db;
 
 DROP TABLE IF EXISTS review;
+DROP TABLE IF EXISTS stock_change_log;
 DROP TABLE IF EXISTS refund_record;
 DROP TABLE IF EXISTS order_detail;
 DROP TABLE IF EXISTS orders;
@@ -121,6 +122,18 @@ CREATE TABLE refund_record (
     CONSTRAINT fk_refund_dish FOREIGN KEY (dish_id) REFERENCES dish(dish_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB COMMENT='退换记录表';
 
+CREATE TABLE stock_change_log (
+    log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    dish_id BIGINT NOT NULL,
+    order_id BIGINT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    change_type VARCHAR(10) NOT NULL COMMENT 'IN/OUT',
+    reason VARCHAR(50) NOT NULL COMMENT 'ORDER_CREATE/ORDER_CANCEL/REFUND_RETURN/MANUAL_ADJUST',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_stock_log_dish FOREIGN KEY (dish_id) REFERENCES dish(dish_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_stock_log_order FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE SET NULL
+) ENGINE=InnoDB COMMENT='库存变动流水表';
+
 CREATE TABLE review (
     review_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     rating TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
@@ -134,6 +147,8 @@ CREATE INDEX idx_dish_name ON dish(dish_name);
 CREATE INDEX idx_order_time ON orders(order_time);
 CREATE INDEX idx_order_status ON orders(status);
 CREATE INDEX idx_refund_time ON refund_record(refund_time);
+CREATE INDEX idx_stock_log_dish_time ON stock_change_log(dish_id, create_time);
+CREATE INDEX idx_stock_log_order ON stock_change_log(order_id);
 CREATE INDEX idx_waiter_call_status ON waiter_call(status);
 CREATE INDEX idx_waiter_call_time ON waiter_call(call_time);
 

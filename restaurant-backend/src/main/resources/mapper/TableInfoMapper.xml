@@ -11,8 +11,33 @@
         ORDER BY table_number
     </select>
 
+    <select id="findPage" resultType="TableInfo">
+        SELECT * FROM table_info
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY table_number
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM table_info
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
     <select id="findById" resultType="TableInfo">
         SELECT * FROM table_info WHERE table_id = #{tableId}
+    </select>
+
+    <select id="lockById" resultType="TableInfo">
+        SELECT * FROM table_info WHERE table_id = #{tableId} FOR UPDATE
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="tableId">

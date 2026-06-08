@@ -17,14 +17,14 @@ function normalizeImage(image) {
 }
 
 function enrichDishCartCount(dishes, cart) {
+  var cartCountMap = {}
+
+  for (var c = 0; c < cart.length; c += 1) {
+    cartCountMap[String(cart[c].dishId)] = cart[c].quantity
+  }
+
   for (var i = 0; i < dishes.length; i += 1) {
-    var count = 0
-    for (var j = 0; j < cart.length; j += 1) {
-      if (String(cart[j].dishId) === String(dishes[i].dishId)) {
-        count = cart[j].quantity
-        break
-      }
-    }
+    var count = cartCountMap[String(dishes[i].dishId)] || 0
     dishes[i].cartCount = count
     dishes[i].cartCountText = count > 0 ? '已选 ' + count + ' 份' : ''
   }
@@ -54,16 +54,16 @@ function filterDishes(dishes, activeCat, keyword) {
 
 function summarizeCart(cart) {
   var count = 0
-  var total = 0
+  var totalCents = 0
 
   for (var i = 0; i < cart.length; i += 1) {
     count += cart[i].quantity
-    total += Number(cart[i].price || 0) * cart[i].quantity
+    totalCents += Math.round(Number(cart[i].price || 0) * 100) * cart[i].quantity
   }
 
   return {
     cartCount: count,
-    cartTotalText: money(total),
+    cartTotalText: money(totalCents / 100),
   }
 }
 
@@ -369,7 +369,6 @@ Page({
   onSubmitOrder: function () {
     var table = this.data.table
     var cart = this.data.cart
-    var user = wx.getStorageSync(STORAGE_KEYS.user)
     var items = []
 
     if (this.data.submitting) return
@@ -402,7 +401,6 @@ Page({
 
     api.placeOrder({
       tableId: table.tableId,
-      userId: user && user.userId,
       items: items,
     })
       .then(function (order) {
@@ -445,7 +443,6 @@ Page({
 
   onCallWaiter: function () {
     var table = this.data.table
-    var user = wx.getStorageSync(STORAGE_KEYS.user)
 
     if (!table || !table.tableId || this.data.callingWaiter) return
 
@@ -454,7 +451,7 @@ Page({
       error: '',
     })
 
-    api.callWaiter(table.tableId, user && user.userId)
+    api.callWaiter(table.tableId)
       .then(function () {
         wx.showToast({
           title: '已呼叫服务员',
